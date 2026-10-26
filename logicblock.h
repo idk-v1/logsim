@@ -1,10 +1,8 @@
 #pragma once
 #include <vector>
-#include <iostream>
 #include <string>
 #include <list>
 #include <map>
-#include <algorithm>
 
 static std::string arrayToStr(const std::string& str, size_t i)
 {
@@ -263,9 +261,9 @@ struct Connector
 struct Board
 {
 	LogicBlock board;
-	std::list<Connector> connections;
-	std::list<Connector> connectionsIn;
-	std::list<Connector> connectionsOut;
+	std::vector<Connector> connections;
+	std::vector<Connector> connectionsIn;
+	std::vector<Connector> connectionsOut;
 
 	// a.out -> b.in
 	void connect(LogicBlock& a, const std::string& aOut, LogicBlock& b, const std::string& bIn)

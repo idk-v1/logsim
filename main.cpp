@@ -1,5 +1,7 @@
 #include "logicblock.h"
 
+#include <iostream>
+
 // 1 cycle
 static LogicBlock& createHalfAdd(Board& board, LogicBlock& parent)
 {

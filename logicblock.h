@@ -36,6 +36,7 @@ struct LogicBlock
 {
 	std::unordered_map<std::string, bool> input;
 	std::unordered_map<std::string, bool> output;
+	std::list<LogicBlock> blocks;
 	std::string label;
 
 	LogicBlock() = default;
@@ -154,6 +155,15 @@ struct LogicBlock
 			output["out"] = 0;
 		else if (label == "delay")
 			output["out"] = input["in"];
+		else
+			for (auto& b : blocks)
+				b.tick();
+	}
+
+	LogicBlock& add(const LogicBlock& block)
+	{
+		blocks.push_back(block);
+		return blocks.back();
 	}
 
 	void print()
@@ -233,6 +243,15 @@ struct LogicBlock
 	}
 };
 
+#define LogicBlockAnd   LogicBlock("and")
+#define LogicBlockOr    LogicBlock("or")
+#define LogicBlockXor   LogicBlock("xor")
+#define LogicBlockNot   LogicBlock("not")
+#define LogicBlockDelay LogicBlock("delay")
+#define LogicBlockOn    LogicBlock("on")
+#define LogicBlockOff   LogicBlock("off")
+
+
 struct Connector
 {
 	Connector(LogicBlock& a, const std::string& aOut, LogicBlock& b, const std::string& bIn, int mode) :
@@ -283,7 +302,7 @@ struct Connector
 
 struct Board
 {
-	std::list<LogicBlock> blocks;
+	LogicBlock board;
 	std::list<Connector> connections;
 	std::list<Connector> connectionsIn;
 	std::list<Connector> connectionsOut;
@@ -308,8 +327,7 @@ struct Board
 
 	LogicBlock& add(const LogicBlock& block)
 	{
-		blocks.push_back(block);
-		return blocks.back();
+		return board.add(block);
 	}
 
 	void tick()
@@ -320,8 +338,7 @@ struct Board
 		for (auto& c : connectionsIn)
 			c.tick();
 
-		for (auto& b : blocks)
-			b.tick();
+		board.tick();
 
 		for (auto& c : connectionsOut)
 			c.tick();

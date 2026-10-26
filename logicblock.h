@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 #include <list>
-#include <unordered_map>
+#include <map>
 #include <algorithm>
 
 static std::string arrayToStr(const std::string& str, size_t i)
@@ -32,10 +32,35 @@ static bool isArray(const std::string& str)
 	return str.find('[', 0) != std::string::npos;
 }
 
+struct strCmpWithArray
+{
+	bool operator()(const std::string& a, const std::string& b) const
+	{
+		if (isArray(a) && isArray(b))
+		{
+			for (const char* ca = a.data(), *cb = b.data(); *ca && *cb; ++ca, ++cb)
+			{
+				if (*ca == *cb)
+				{
+					if (*ca == '[')
+					{
+						int ai = getArrayNumber(a);
+						int bi = getArrayNumber(b);
+						return (ai < bi);
+					}
+				}
+				else
+					return (*ca < *cb);
+			}
+		}
+		return a < b;
+	}
+};
+
 struct LogicBlock
 {
-	std::unordered_map<std::string, bool> input;
-	std::unordered_map<std::string, bool> output;
+	std::map<std::string, bool, strCmpWithArray> input;
+	std::map<std::string, bool, strCmpWithArray> output;
 	std::list<LogicBlock> blocks;
 	std::string label;
 
@@ -168,78 +193,13 @@ struct LogicBlock
 
 	void print()
 	{
-		std::cout << label << '\n';
-
-		std::vector<std::string> inputs;
-		inputs.reserve(input.size());
+		printf("%s\nIn:\n", label.data());
 		for (auto& in : input)
-			inputs.push_back(in.first + "|" + std::to_string(in.second));
-		std::sort(inputs.begin(), inputs.end(), 
-			[](std::string a, std::string b)
-			{
-				if (isArray(a))
-				{
-					int ai = getArrayNumber(a);
-					a = std::string(a, 0, a.find('[') + 1);
-					a += '0' + (ai / 10000 % 10);
-					a += '0' + (ai / 1000 % 10);
-					a += '0' + (ai / 100 % 10);
-					a += '0' + (ai / 10 % 10);
-					a += '0' + (ai % 10);
-				}
-				if (isArray(b))
-				{
-					int bi = getArrayNumber(b);
-					b = std::string(b, 0, b.find('[') + 1);
-					b += '0' + (bi / 10000 % 10);
-					b += '0' + (bi / 1000 % 10);
-					b += '0' + (bi / 100 % 10);
-					b += '0' + (bi / 10 % 10);
-					b += '0' + (bi % 10);
-				}
-				return a < b;
-			});
-		std::cout << "In:\n";
-		for (auto& in : inputs)
-		{
-			std::cout << std::string(in, 0, in.size() - 2) << ": " << in.back() << '\n';
-		}
-
-		std::vector<std::string> outputs;
-		outputs.reserve(output.size());
+			printf("[%s]: %d\n", in.first.data(), (int)in.second);
+		printf("Out\n");
 		for (auto& out : output)
-			outputs.push_back(out.first + "|" + std::to_string(out.second));
-		std::sort(outputs.begin(), outputs.end(),
-			[](std::string a, std::string b)
-			{
-				if (isArray(a))
-				{
-					int ai = getArrayNumber(a);
-					a = std::string(a, 0, a.find('[') + 1);
-					a += '0' + (ai / 10000 % 10);
-					a += '0' + (ai / 1000 % 10);
-					a += '0' + (ai / 100 % 10);
-					a += '0' + (ai / 10 % 10);
-					a += '0' + (ai % 10);
-				}
-				if (isArray(b))
-				{
-					int bi = getArrayNumber(b);
-					b = std::string(b, 0, b.find('[') + 1);
-					b += '0' + (bi / 10000 % 10);
-					b += '0' + (bi / 1000 % 10);
-					b += '0' + (bi / 100 % 10);
-					b += '0' + (bi / 10 % 10);
-					b += '0' + (bi % 10);
-				}
-				return a < b;
-			});
-		std::cout << "Out:\n";
-		for (auto& out : outputs)
-		{
-			std::cout << std::string(out, 0, out.size() - 2) << ": " << out.back() << '\n';
-		}
-		std::cout << "\n";
+			printf("[%s]: %d\n", out.first.data(), (int)out.second);
+		printf("\n");
 	}
 };
 
@@ -259,8 +219,8 @@ struct Connector
 
 	void tick()
 	{
-		std::unordered_map<std::string, bool>* aport = NULL;
-		std::unordered_map<std::string, bool>* bport = NULL;
+		std::map<std::string, bool, strCmpWithArray>* aport = NULL;
+		std::map<std::string, bool, strCmpWithArray>* bport = NULL;
 		if (mode == 0)
 		{
 			aport = &a.output;

@@ -395,7 +395,7 @@ int main()
 		board.tick();
 	std::cout << i << '\n';
 	
-	//sub.print();
+	sub.print();
 	//std::cout << readNBitOutput(out, n) << '\n';
 
 	//LogicBlock& a = createNBitNumber(board, board.board, 2, 0b11);

@@ -135,9 +135,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="bulletinV1_font.h" />
-    <ClInclude Include="graphics.h" />
-    <ClInclude Include="logicblock.h" />
+    <ClInclude Include="graphics\bulletinV1_font.h" />
+    <ClInclude Include="graphics\graphics.h" />
+    <ClInclude Include="src\logicblock.h" />
     <ClInclude Include="SDL3\include\SDL3\SDL.h" />
     <ClInclude Include="SDL3\include\SDL3\SDL_assert.h" />
     <ClInclude Include="SDL3\include\SDL3\SDL_asyncio.h" />
@@ -223,11 +223,11 @@
     <ClInclude Include="SDL3\include\SDL3\SDL_version.h" />
     <ClInclude Include="SDL3\include\SDL3\SDL_video.h" />
     <ClInclude Include="SDL3\include\SDL3\SDL_vulkan.h" />
-    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="graphics\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="graphics.c" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="graphics\graphics.c" />
+    <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SDL3.dll" />

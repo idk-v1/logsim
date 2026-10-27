@@ -4,8 +4,8 @@
 #include <list>
 #include <map>
 
-#include "graphics.h"
-#include "bulletinV1_font.h"
+#include "../graphics/graphics.h"
+#include "../graphics/bulletinV1_font.h"
 
 static std::string arrayToStr(const std::string& str, size_t i)
 {

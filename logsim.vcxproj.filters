@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="logicblock.h">
+    <ClInclude Include="src\logicblock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SDL3\include\SDL3\SDL.h">
@@ -273,21 +273,21 @@
     <ClInclude Include="SDL3\include\SDL3\SDL_vulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="bulletinV1_font.h">
+    <ClInclude Include="graphics\bulletinV1_font.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="graphics.h">
+    <ClInclude Include="graphics\graphics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="stb_image.h">
+    <ClInclude Include="graphics\stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="graphics.c">
+    <ClCompile Include="graphics\graphics.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

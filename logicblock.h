@@ -4,6 +4,9 @@
 #include <list>
 #include <map>
 
+#include "graphics.h"
+#include "bulletinV1_font.h"
+
 static std::string arrayToStr(const std::string& str, size_t i)
 {
 	return str + "[" + std::to_string(i) + "]";
@@ -62,6 +65,9 @@ struct LogicBlock
 	std::list<LogicBlock> blocks;
 	std::string label;
 
+	int x = 0, y = 0, w = 0, h = 0;
+	bool expand = true;
+
 	LogicBlock() = default;
 	LogicBlock(const std::string& label)
 	{
@@ -80,7 +86,7 @@ struct LogicBlock
 			output["out"] = 1;
 		else if (label == "off")
 			output["out"] = 0;
-		else {}
+
 		this->label = label;
 	}
 	LogicBlock(const std::string& in, const std::string& out, const std::string& label)
@@ -199,6 +205,93 @@ struct LogicBlock
 			printf("[%s]: %d\n", out.first.data(), (int)out.second);
 		printf("\n");
 	}
+
+	void setPos(int x, int y)
+	{
+		this->x = x;
+		this->y = y;
+	}
+
+	void setExpand(bool expand)
+	{
+		this->expand = expand;
+	}
+
+	void recalc()
+	{
+		for (auto& b : blocks)
+		{
+			if (expand)
+				b.recalc();
+		}
+
+		int hfont_w = font_w / 2;
+		int hfont_h = font_h / 2;
+
+		// fit name or at least 1 if blank
+		w = hfont_w * std::max(1ull, label.size());
+		if (expand)
+		{
+			for (auto& b : blocks)
+			{
+				if (b.w)
+					if (b.x + b.w > w)
+						w = b.x + b.w;
+			}
+		}
+		// 2*font_w for input/output on sides
+		w += font_w * 2;
+
+		// fit max of input or output length or at least 1
+		h = hfont_w * std::max(1ull, std::max(input.size(), output.size()));
+		if (expand)
+		{
+			for (auto& b : blocks)
+			{
+				if (b.h)
+					if (b.y + b.h > h)
+						h = b.y + b.h;
+			}
+		}
+		// hfont_h for title
+		h += hfont_h;
+	}
+
+	void draw(SDL_Surface* surface, int px, int py)
+	{
+		int bx = px + x;
+		int by = py + y;
+
+		int hfont_h = font_h / 2;
+		int hfont_w = font_w / 2;
+
+		drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
+		drawRect(surface, bx, by, w, hfont_h, rgb(15, 15, 15)); // titlebar
+		drawRect(surface, bx, by + hfont_h, hfont_w, h - hfont_h, rgb(63, 15, 15)); // inputs
+		drawRect(surface, bx + w - hfont_w, by + hfont_h, hfont_w, h - hfont_h, rgb(15, 15, 63)); // outputs
+		drawText(surface, bx + hfont_w, by, 0, rgb(255, 255, 255), label.data()); // title
+		
+		int off = by + hfont_h;
+		for (auto& i : input)
+		{
+			drawCircleA(surface, bx, off, -1, -1, hfont_w / 2, 
+				i.second ? rgb(255, 255, 0) : rgb(63, 63, 0));
+			off += hfont_w;
+		}
+		off = by + hfont_h;
+		for (auto& i : output)
+		{
+			drawCircleA(surface, bx + w - hfont_w, off, -1, -1, hfont_w / 2,
+				i.second ? rgb(255, 255, 0) : rgb(63, 63, 0));
+			off += hfont_w;
+		}
+
+		if (expand)
+			for (auto& b : blocks)
+				b.draw(surface, bx, by);
+
+		drawRectOut(surface, bx - 1, by - 1, w + 2, h + 2, 1, rgb(127, 127, 127));
+	}
 };
 
 #define LogicBlockAnd   LogicBlock("and")
@@ -249,7 +342,7 @@ struct Connector
 					break;
 			}
 		}
-		else
+		else // could have done a zero out, then or into outputs if i was smarter
 			(*bport)[bIn] = (*aport)[aOut];
 	}
 
@@ -264,6 +357,11 @@ struct Board
 	std::vector<Connector> connections;
 	std::vector<Connector> connectionsIn;
 	std::vector<Connector> connectionsOut;
+
+	Board()
+	{
+		board.label = "Board";
+	}
 
 	// a.out -> b.in
 	void connect(LogicBlock& a, const std::string& aOut, LogicBlock& b, const std::string& bIn)
@@ -300,5 +398,10 @@ struct Board
 
 		for (auto& c : connectionsOut)
 			c.tick();
+	}
+
+	void draw(SDL_Surface* surface)
+	{
+		board.draw(surface, 0, 0);
 	}
 };

@@ -2,6 +2,29 @@
 
 #include <iostream>
 
+// n cycles
+static LogicBlock& createNDelay(Board& board, LogicBlock& parent, int n)
+{
+	LogicBlock& delay = parent.add(LogicBlock("in", "out", std::to_string(n) + "delay"));
+
+	LogicBlock* old = NULL;
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& temp = delay.add(LogicBlockDelay);
+		temp.setPos(15 + (i / 10) * 50, 15 + (i % 10) * 30);
+		if (i == 0)
+			board.connectToIn(delay, "in", temp, "in");
+		else if (old)
+			board.connect(*old, "out", temp, "in");
+
+		old = &temp;
+	}
+	if (old)
+		board.connectToOut(*old, "out", delay, "out");
+
+	return delay;
+}
+
 // 1 cycle
 static LogicBlock& createHalfAdd(Board& board, LogicBlock& parent)
 {
@@ -113,6 +136,14 @@ static LogicBlock& createFullAddFast(Board& board, LogicBlock& parent)
 	LogicBlock& tempor     = fullAdd.add(LogicBlockOr);
 	LogicBlock& tempdelay0 = fullAdd.add(LogicBlockDelay);
 
+	tempxor0.setPos(15, 15);
+	tempand0.setPos(15, 45);
+	tempor.setPos(15, 75);
+	
+	tempdelay0.setPos(65, 15);
+	tempxor1.setPos(65, 45);
+	tempand1.setPos(65, 75);
+
 	// step 0
 	// tempxor0
 	// tempand0
@@ -159,10 +190,10 @@ static LogicBlock& createNBitNumber(Board& board, LogicBlock& parent, int n, int
 }
 
 // 2n + 1 cycles
-// somehow just 12
 static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 {
-	LogicBlock& add = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
+	LogicBlock& add = parent.add(LogicBlock(
+		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
 		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitAdder"));
 
 	LogicBlock* oldAdd = NULL;
@@ -170,6 +201,8 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& tempAdd = createFullAddFast(board, add);
+		tempAdd.setPos(15 + (i / (n / 4)) * 140, 15 + (i % (n / 4)) * 105);
+		//tempAdd.setExpand(false);
 		board.connectToIn(add, arrayToStr("a", i), tempAdd, "a");
 		board.connectToIn(add, arrayToStr("b", i), tempAdd, "b");
 
@@ -187,10 +220,17 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 	if (oldAdd) // no one would make a 0bit adder
 	{
 		LogicBlock& tempor = add.add(LogicBlockOr);
+		tempor.setPos(15 + (n / (n / 4)) * 140, 15 + (n % (n / 4)) * 50);
 		board.connect(*oldAdd, "carry0", tempor, "a");
 		board.connect(*oldAdd, "carry1", tempor, "b");
 		board.connectToOut(tempor, "out", add, "overflow");
 	}
+
+	LogicBlock& delay = createNDelay(board, add, 2 * n + 1);
+	delay.setPos(15 + ((n + 1) / (n / 4)) * 140, 15 + ((n + 1) % (n / 4)) * 50);
+	//delay.setExpand(false);
+	board.connectToIn(add, "sigin", delay, "in");
+	board.connectToOut(delay, "out", add, "sigout");
 
 	return add;
 }
@@ -210,25 +250,16 @@ static LogicBlock& createNBitInvert(Board& board, LogicBlock& parent, int n)
 	return inv;
 }
 
-// 4n + 4 cycles
-// Also fucky cycle count
+// 3n + 3 cycles
 static LogicBlock& createNBitSub(Board& board, LogicBlock& parent, int n)
 {
-	LogicBlock& sub = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
-		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitSubtract"));
+	LogicBlock& sub = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n),
+		arrayToStr("out", n) + "|overflow", std::to_string(n) + "bitSubtract"));
 
 	LogicBlock& inv = createNBitInvert(board, sub, n);
 	LogicBlock& tempAdd = createNBitAdd1(board, sub, n);
 	LogicBlock& add = createNBitAdd(board, sub, n);
 	LogicBlock& ret = sub.add(LogicBlockNot);
-
-	LogicBlock& delay0 = sub.add(LogicBlockDelay);
-	LogicBlock& delay1 = sub.add(LogicBlockDelay);
-	board.connectToIn(sub, "sigin", delay0, "in");
-	board.connect(delay0, "out", tempAdd, "sigin");
-	board.connect(tempAdd, "sigout", add, "sigin");
-	board.connect(add, "sigout", delay1, "in");
-	board.connectToOut(delay1, "out", sub, "sigout");
 
 	// step 0
 	// inv
@@ -361,7 +392,6 @@ static LogicBlock& createNBitGate(Board& board, LogicBlock& parent, int n)
 	return gate;
 }
 
-
 static LogicBlock& createNBitOutput(Board& board, LogicBlock& parent, int n)
 {
 	return parent.add(LogicBlock(arrayToStr("in", n), "", std::to_string(n) + "bitOutput"));
@@ -380,24 +410,67 @@ static int64_t readNBitOutput(const LogicBlock& block, int n)
 
 int main()
 {
+	SDL_Init(SDL_INIT_VIDEO);
+	SDL_Window* window = SDL_CreateWindow("logsim", 1200, 600, 0);
+	SDL_Surface* surface = SDL_GetWindowSurface(window);
+	setPixelFormat(surface);
+
 	Board board;
 
-	int n = 32;
-	LogicBlock& a = createNBitNumber(board, board.board, n, 54321);
-	LogicBlock& b = createNBitNumber(board, board.board, n, 12345);
-	LogicBlock& sub = createNBitAdd(board, board.board, n);
+	int n = 16;
+	LogicBlock& a = createNBitNumber(board, board.board, n, 0b1111111111111111);
+	LogicBlock& b = createNBitNumber(board, board.board, n, 0b0000000000000001);
+	LogicBlock& add = createNBitAdd(board, board.board, n);
 	LogicBlock& out = createNBitOutput(board, board.board, n);
+	LogicBlock& power = board.add(LogicBlockOn);
+	a.setPos(15, 50);
+	b.setPos(15, 200);
+	add.setPos(100, 50);
+	out.setPos(1000, 50);
+	power.setPos(15, 350);
 	
-	board.connect(a, "out[]", sub, "a[]");
-	board.connect(b, "out[]", sub, "b[]");
-	board.connect(sub, "out[]", out, "in[]");
+	board.connect(a, "out[]", add, "a[]");
+	board.connect(b, "out[]", add, "b[]");
+	board.connect(add, "out[]", out, "in[]");
+
+	board.connect(power, "out", add, "sigin");
+
+	board.board.recalc();
 	
-	int i = 0;
-	for (; readNBitOutput(out, n) != 54321 + 12345; ++i)
-		board.tick();
-	std::cout << i << '\n';
-	
-	sub.print();
+	int ticks = 0;
+	bool running = true;
+	while (running)
+	{
+		SDL_Event event;
+		while (SDL_PollEvent(&event))
+		{
+			switch (event.type)
+			{
+			case SDL_EVENT_QUIT:
+				running = false;
+				break;
+			}
+		}
+		clearScreen(surface, rgb(0, 0, 0));
+		board.draw(surface);
+		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %d", ticks);
+		SDL_UpdateWindowSurface(window);
+
+		if (!add.output["sigout"])
+		{
+			board.tick();
+			++ticks;
+		}
+		SDL_Delay(250);
+	}
+	SDL_DestroyWindow(window);
+
+	//int i = 0;
+	//for (; readNBitOutput(out, n) != 54321 + 12345; ++i)
+	//	board.tick();
+	//std::cout << i << '\n';
+	//
+	//sub.print();
 	//std::cout << readNBitOutput(out, n) << '\n';
 
 	//LogicBlock& a = createNBitNumber(board, board.board, 2, 0b11);
@@ -423,6 +496,8 @@ int main()
 	//for (int i = 0; i < 10; ++i)
 	//	board.tick();
 	//compare.print();
+
+	SDL_Quit();
 
 	return 0;
 }

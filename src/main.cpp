@@ -78,7 +78,7 @@ static LogicBlock& createNBitAdd1(Board& board, LogicBlock& parent, int n)
 	return add;
 }
 
-// 3 cycles
+// 2 cycles
 static LogicBlock& createFullAdd(Board& board, LogicBlock& parent)
 {
 	LogicBlock& fullAdd = parent.add(LogicBlock("a|b|c", "out|carry", "fullAdd"));
@@ -87,9 +87,9 @@ static LogicBlock& createFullAdd(Board& board, LogicBlock& parent)
 	LogicBlock& tempand0   = fullAdd.add(LogicBlockAnd);
 	LogicBlock& tempxor1   = fullAdd.add(LogicBlockXor);
 	LogicBlock& tempand1   = fullAdd.add(LogicBlockAnd);
-	LogicBlock& tempor     = fullAdd.add(LogicBlockOr);
+	//LogicBlock& tempor     = fullAdd.add(LogicBlockOr);
 	LogicBlock& tempdelay0 = fullAdd.add(LogicBlockDelay);
-	LogicBlock& tempdelay1 = fullAdd.add(LogicBlockDelay);
+	//LogicBlock& tempdelay1 = fullAdd.add(LogicBlockDelay);
 	LogicBlock& tempdelay2 = fullAdd.add(LogicBlockDelay);
 
 	// step 0
@@ -117,66 +117,14 @@ static LogicBlock& createFullAdd(Board& board, LogicBlock& parent)
 
 	board.connect(tempxor0,        "out", tempxor1,   "a"); // 1
 	board.connect(tempdelay2,      "out", tempxor1,   "b"); // 1
-	board.connect(tempxor1,        "out", tempdelay1, "in"); // 2
-	board.connectToOut(tempdelay1, "out", fullAdd,    "out"); // 3
+	//board.connect(tempxor1,        "out", tempdelay1, "in"); // 2
+	board.connectToOut(tempxor1, "out", fullAdd,    "out"); // 2
 
 	board.connect(tempxor0,   "out", tempand1, "a"); // 1
 	board.connect(tempdelay2, "out", tempand1, "b"); // 1
-	board.connect(tempand1,    "out", tempor,  "a"); // 2
-	board.connect(tempdelay0,  "out", tempor,  "b"); // 2
-	board.connectToOut(tempor, "out", fullAdd, "carry"); // 3
-
-	return fullAdd;
-}
-
-// 2 cycles
-static LogicBlock& createFullAddFast(Board& board, LogicBlock& parent)
-{
-	LogicBlock& fullAdd = parent.add(LogicBlock("a|b|c0|c1", "out|carry0|carry1", "fullAdd"));
-
-	LogicBlock& tempxor0   = fullAdd.add(LogicBlockXor);
-	LogicBlock& tempand0   = fullAdd.add(LogicBlockAnd);
-	LogicBlock& tempxor1   = fullAdd.add(LogicBlockXor);
-	LogicBlock& tempand1   = fullAdd.add(LogicBlockAnd);
-	LogicBlock& tempor     = fullAdd.add(LogicBlockOr);
-	LogicBlock& tempdelay0 = fullAdd.add(LogicBlockDelay);
-
-	tempxor0.setPos(15, 15);
-	tempand0.setPos(15, 45);
-	tempor.setPos(15, 75);
-	
-	tempdelay0.setPos(65, 15);
-	tempxor1.setPos(65, 45);
-	tempand1.setPos(65, 75);
-
-	// step 0
-	// tempxor0
-	// tempand0
-	// tempor
-
-	// step 1
-	// tempdelay0
-	// tempxor1
-	// tempand1
-
-	board.connectToIn(fullAdd, "a", tempxor0, "a"); // 0
-	board.connectToIn(fullAdd, "b", tempxor0, "b"); // 0
-
-	board.connectToIn(fullAdd, "a", tempand0, "a"); // 0
-	board.connectToIn(fullAdd, "b", tempand0, "b"); // 0
-	board.connect(tempand0, "out", tempdelay0, "in"); // 1
-
-	board.connectToIn(fullAdd, "c0", tempor, "a"); // 0
-	board.connectToIn(fullAdd, "c1", tempor, "b"); // 0
-
-	board.connect(tempxor0, "out", tempxor1, "a"); // 1
-	board.connect(tempor, "out", tempxor1, "b"); // 1
-	board.connectToOut(tempxor1, "out", fullAdd, "out"); // 2
-
-	board.connect(tempxor0, "out", tempand1, "a"); // 1
-	board.connect(tempor, "out", tempand1, "b"); // 1
-	board.connectToOut(tempand1, "out", fullAdd, "carry0"); // 2
-	board.connectToOut(tempdelay0, "out", fullAdd, "carry1"); // 2
+	board.connectToOut(tempand1,    "out", fullAdd,  "carry"); // 2
+	board.connectToOut(tempdelay0,  "out", fullAdd,  "carry"); // 2
+	//board.connectToOut(tempor, "out", fullAdd, "carry"); // 3
 
 	return fullAdd;
 }
@@ -188,16 +136,16 @@ static LogicBlock& createNBitNumber(Board& board, LogicBlock& parent, int n, int
 	bool neg = n < 0;
 	for (int i = 0; i < n; ++i)
 	{
-		num.output[arrayToStr("out", i)] = (input & 1);
+		num.output[arrayToStr("out", i)].data = (input & 1);
 		input >>= 1;
 	}
 	if (neg && n != 64)
-		num.output[arrayToStr("out", n - 1)] = neg;
+		num.output[arrayToStr("out", n - 1)].data = neg;
 
 	return num;
 }
 
-// 2n + 1 cycles
+// 2n cycles
 static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 {
 	LogicBlock& add = parent.add(LogicBlock(
@@ -208,7 +156,7 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 
 	for (int i = 0; i < n; ++i)
 	{
-		LogicBlock& tempAdd = createFullAddFast(board, add);
+		LogicBlock& tempAdd = createFullAdd(board, add);
 		tempAdd.setPos(15 + (i / (n / 4)) * 140, 15 + (i % (n / 4)) * 105);
 		tempAdd.setExpand(false);
 		board.connectToIn(add, arrayToStr("a", i), tempAdd, "a");
@@ -216,8 +164,7 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 
 		if (i > 0)
 		{
-			board.connect(*oldAdd, "carry0", tempAdd, "c0");
-			board.connect(*oldAdd, "carry1", tempAdd, "c1");
+			board.connect(*oldAdd, "carry", tempAdd, "c");
 		}
 
 		board.connectToOut(tempAdd, "out", add, arrayToStr("out", i));
@@ -226,15 +173,9 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 	}
 
 	if (oldAdd) // no one would make a 0bit adder
-	{
-		LogicBlock& tempor = add.add(LogicBlockOr);
-		tempor.setPos(15 + (n / (n / 4)) * 140, 15 + (n % (n / 4)) * 50);
-		board.connect(*oldAdd, "carry0", tempor, "a");
-		board.connect(*oldAdd, "carry1", tempor, "b");
-		board.connectToOut(tempor, "out", add, "overflow");
-	}
+		board.connectToOut(*oldAdd, "carry", add, "overflow");
 
-	LogicBlock& delay = createNDelay(board, add, 2 * n + 1);
+	LogicBlock& delay = createNDelay(board, add, 2 * n);
 	delay.setPos(15 + ((n + 1) / (n / 4)) * 140, 15 + ((n + 1) % (n / 4)) * 50);
 	delay.setExpand(false);
 	board.connectToIn(add, "sigin", delay, "in");
@@ -258,7 +199,7 @@ static LogicBlock& createNBitInvert(Board& board, LogicBlock& parent, int n)
 	return inv;
 }
 
-// 3n + 3 cycles
+// 3n + 2 cycles
 static LogicBlock& createNBitSub(Board& board, LogicBlock& parent, int n)
 {
 	LogicBlock& sub = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
@@ -330,54 +271,21 @@ static LogicBlock& createNBitXor(Board& board, LogicBlock& parent, int n)
 	return nxor;
 }
 
-// log2(n) + 1 cycles
+// 1 cycle
 static LogicBlock& createNBitIsZero(Board& board, LogicBlock& parent, int n)
 {
 	LogicBlock& iszero = parent.add(LogicBlock(arrayToStr("in", n), "out", 
 		std::to_string(n) + "bitIsZero"));
 
-	std::vector<LogicBlock*> ors;
-
-	for (int i = 0; i < n; ++i)
-	{
-		if (i % 2 == 0)
-		{
-			LogicBlock& tempor = iszero.add(LogicBlockOr);
-			ors.push_back(&tempor);
-			board.connectToIn(iszero, arrayToStr("in", i), *ors.back(), "a");
-		}
-		else
-			board.connectToIn(iszero, arrayToStr("in", i), *ors.back(), "b");
-	}
-
-	size_t len = (n + 1ull) / 2;
-	size_t start = 0;
-	while (len > 1)
-	{
-		for (int i = 0; i < len; ++i)
-		{
-			if (i % 2 == 0)
-			{
-				LogicBlock& tempor = iszero.add(LogicBlockOr);
-				ors.push_back(&tempor);
-				board.connect(*(ors[start + i]), "out", *ors.back(), "a");
-			}
-			else
-				board.connect(*(ors[start + i]), "out", *ors.back(), "b");
-
-		}
-		len = (len + 1) / 2;
-		start = ors.size() - len;
-	}
-
 	LogicBlock& tempnot = iszero.add(LogicBlockNot);
-	board.connect(*(ors.back()), "out", tempnot, "in");
 	board.connectToOut(tempnot, "out", iszero, "out");
 
+	for (int i = 0; i < n; ++i)
+		board.connectToIn(iszero, arrayToStr("in", i), tempnot, "in");
 	return iszero;
 }
 
-// log2(n) + 2 cycles
+// 2 cycles
 static LogicBlock& createNBitCompare(Board& board, LogicBlock& parent, int n)
 {
 	LogicBlock& comp = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n), 
@@ -460,11 +368,11 @@ static LogicBlock& createNBitOutput(Board& board, LogicBlock& parent, int n)
 static int64_t readNBitOutput(const LogicBlock& block, int n)
 {
 	int64_t num = 0;
-	bool neg = block.input.at(arrayToStr("in", n - 1));
+	bool neg = block.input.at(arrayToStr("in", n - 1)).data;
 	for (int i = n - 1; i >= 0; --i)
 	{
 		num <<= 1ull;
-		bool value = block.input.at(arrayToStr("in", i));
+		bool value = block.input.at(arrayToStr("in", i)).data;
 		if (neg)
 			value = !value;
 		num |= (int64_t)value;
@@ -477,11 +385,11 @@ static int64_t readNBitOutput(const LogicBlock& block, int n)
 static int64_t readNBitInput(const LogicBlock& block, int n)
 {
 	int64_t num = 0;
-	bool neg = block.output.at(arrayToStr("out", n - 1));
+	bool neg = block.output.at(arrayToStr("out", n - 1)).data;
 	for (int i = n - 1; i >= 0; --i)
 	{
 		num <<= 1ull;
-		bool value = block.output.at(arrayToStr("out", i));
+		bool value = block.output.at(arrayToStr("out", i)).data;
 		if (neg)
 			value = !value;
 		num |= (int64_t)value;
@@ -512,8 +420,8 @@ int main()
 	Board board;
 
 	int n = 16;
-	LogicBlock& a = createNBitNumber(board, board.board, n, 12345);
-	LogicBlock& b = createNBitNumber(board, board.board, n, 2345);
+	LogicBlock& a = createNBitNumber(board, board.board, n, 1);
+	LogicBlock& b = createNBitNumber(board, board.board, n, 1);
 	LogicBlock& sub = createNBitSub(board, board.board, n);
 	LogicBlock& out = createNBitOutput(board, board.board, n);
 	LogicBlock& power = board.add(LogicBlockOn);
@@ -529,8 +437,12 @@ int main()
 
 	board.connect(power, "out", sub, "sigin");
 
-	LogicBlock& clock = createClock(board, board.board);
-	clock.setPos(15, 15);
+	//LogicBlock& clock = createClock(board, board.board);
+	//clock.setPos(15, 15);
+
+	//LogicBlock& iszero = createNBitIsZero(board, board.board, n);
+	//board.connect(sub, "out[]", iszero, "in[]");
+	//iszero.setPos(1000, 250);
 
 	board.board.recalc();
 	

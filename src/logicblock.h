@@ -64,10 +64,15 @@ struct strCmpWithArray
 	}
 };
 
+struct WriteData
+{
+	bool data = 0, written = 0;
+};
+
 struct LogicBlock
 {
-	std::map<std::string, bool, strCmpWithArray> input;
-	std::map<std::string, bool, strCmpWithArray> output;
+	std::map<std::string, WriteData, strCmpWithArray> input;
+	std::map<std::string, WriteData, strCmpWithArray> output;
 	std::list<LogicBlock> blocks;
 	std::string label;
 
@@ -79,19 +84,19 @@ struct LogicBlock
 	{
 		if (label == "and" || label == "or" || label == "xor")
 		{
-			input["a"] = 0;
-			input["b"] = 0;
-			output["out"] = 0;
+			input["a"] = { 0 };
+			input["b"] = { 0 };
+			output["out"] = { 0 };
 		}
 		else if (label == "not" || label == "delay")
 		{
-			input["in"] = 0;
-			output["out"] = 0;
+			input["in"] = { 0 };
+			output["out"] = { 0 };
 		}
 		else if (label == "on")
-			output["out"] = 1;
+			output["out"] = { 1, 0 };
 		else if (label == "off")
-			output["out"] = 0;
+			output["out"] = { 0 };
 
 		this->label = label;
 	}
@@ -122,10 +127,10 @@ struct LogicBlock
 					if (arraySize)
 					{
 						for (int i = 0; i < arraySize; ++i)
-							input[arrayToStr(std::string(start, nameEnd - start), i)] = 0;
+							input[arrayToStr(std::string(start, nameEnd - start), i)] = { 0 };
 					}
 					else
-						input[std::string(start, nameEnd - start)] = 0;
+						input[std::string(start, nameEnd - start)] = { 0 };
 				}
 				start = c + 1;
 
@@ -159,10 +164,10 @@ struct LogicBlock
 					if (arraySize)
 					{
 						for (int i = 0; i < arraySize; ++i)
-							output[arrayToStr(std::string(start, nameEnd - start), i)] = 0;
+							output[arrayToStr(std::string(start, nameEnd - start), i)] = { 0 };
 					}
 					else
-						output[std::string(start, nameEnd - start)] = 0;
+						output[std::string(start, nameEnd - start)] = { 0 };
 				}
 				start = c + 1;
 
@@ -177,19 +182,19 @@ struct LogicBlock
 	void tick()
 	{
 		if (label == "and")
-			output["out"] = input["a"] && input["b"];
+			output["out"].data = input["a"].data && input["b"].data;
 		else if (label == "or")
-			output["out"] = input["a"] || input["b"];
+			output["out"].data = input["a"].data || input["b"].data;
 		else if (label == "xor")
-			output["out"] = input["a"] != input["b"];
+			output["out"].data = input["a"].data != input["b"].data;
 		else if (label == "not")
-			output["out"] = !input["in"];
+			output["out"].data = !input["in"].data;
 		else if (label == "on")
-			output["out"] = 1;
+			output["out"].data = 1;
 		else if (label == "off")
-			output["out"] = 0;
+			output["out"].data = 0;
 		else if (label == "delay")
-			output["out"] = input["in"];
+			output["out"].data = input["in"].data;
 		else
 			for (auto& b : blocks)
 				b.tick();
@@ -205,10 +210,10 @@ struct LogicBlock
 	{
 		printf("%s\nIn:\n", label.data());
 		for (auto& in : input)
-			printf("[%s]: %d\n", in.first.data(), (int)in.second);
+			printf("[%s]: %d\n", in.first.data(), (int)in.second.data);
 		printf("Out\n");
 		for (auto& out : output)
-			printf("[%s]: %d\n", out.first.data(), (int)out.second);
+			printf("[%s]: %d\n", out.first.data(), (int)out.second.data);
 		printf("\n");
 	}
 
@@ -304,7 +309,7 @@ struct LogicBlock
 		{
 			XYCoord xy = getConnectionPos(index, true);
 			drawCircle(surface, xy.x, xy.y, hfont_w / 2, 
-				i.second ? on : off);
+				i.second.data ? on : off);
 			drawTextA(surface, xy.x + hfont_w, xy.y, -1, 0, 0, 
 				rgb(255, 255, 255), i.first.data());
 			++index;
@@ -314,7 +319,7 @@ struct LogicBlock
 		{
 			XYCoord xy = getConnectionPos(index, false);
 			drawCircle(surface, xy.x, xy.y, hfont_w / 2,
-				i.second ? on : off);
+				i.second.data ? on : off);
 			drawTextA(surface, xy.x - hfont_w, xy.y, 1, 0, 0, 
 				rgb(255, 255, 255), i.first.data());
 
@@ -371,6 +376,18 @@ struct LogicBlock
 		printf("bad!!! %s %s\n", name.data(), label.data());
 		return -1;
 	}
+
+	void resetWrittenTo()
+	{
+		for (auto& b : blocks)
+			b.resetWrittenTo();
+
+		for (auto& i : input)
+			i.second.written = false;
+
+		for (auto& o : output)
+			o.second.written = false;
+	}
 };
 
 #define LogicBlockAnd   LogicBlock("and")
@@ -389,8 +406,8 @@ struct Connector
 
 	void tick()
 	{
-		std::map<std::string, bool, strCmpWithArray>* aport = NULL;
-		std::map<std::string, bool, strCmpWithArray>* bport = NULL;
+		std::map<std::string, WriteData, strCmpWithArray>* aport = NULL;
+		std::map<std::string, WriteData, strCmpWithArray>* bport = NULL;
 		if (mode == 0)
 		{
 			aport = &a.output;
@@ -406,6 +423,11 @@ struct Connector
 			aport = &a.output;
 			bport = &b.output;
 		}
+		else if (mode == 2)
+		{
+			aport = &a.input;
+			bport = &b.output;
+		}
 
 		if (isArray(aOut) && isArray(bIn) && getArrayNumber(aOut) == -1 && getArrayNumber(bIn) == -1)
 		{
@@ -416,13 +438,21 @@ struct Connector
 			{
 				if (aport->find(arrayToStr(aOut2, i)) != aport->end() &&
 					bport->find(arrayToStr(bIn2, i)) != bport->end())
-					(*bport)[arrayToStr(bIn2, i)] = (*aport)[arrayToStr(aOut2, i)];
+				{
+					if ((*aport)[arrayToStr(aOut2, i)].data || !(*bport)[arrayToStr(bIn2, i)].written)
+						(*bport)[arrayToStr(bIn2, i)].data = (*aport)[arrayToStr(aOut2, i)].data;
+					(*bport)[arrayToStr(bIn2, i)].written = true;
+				}
 				else
 					break;
 			}
 		}
-		else // could have done a zero out, then or into outputs if i was smarter
-			(*bport)[bIn] = (*aport)[aOut];
+		else
+		{
+			if ((*aport)[aOut].data || !(*bport)[bIn].written)
+				(*bport)[bIn].data = (*aport)[aOut].data;
+			(*bport)[bIn].written = true;
+		}
 	}
 
 	void draw(SDL_Surface* surface)
@@ -435,8 +465,8 @@ struct Connector
 
 		bool aInput = false;
 		bool bInput = true;
-		std::map<std::string, bool, strCmpWithArray>* aport = NULL;
-		std::map<std::string, bool, strCmpWithArray>* bport = NULL;
+		std::map<std::string, WriteData, strCmpWithArray>* aport = NULL;
+		std::map<std::string, WriteData, strCmpWithArray>* bport = NULL;
 		if (mode == 0)
 		{
 			aport = &a.output;
@@ -454,6 +484,13 @@ struct Connector
 			aport = &a.output;
 			bport = &b.output;
 		}
+		else if (mode == 2)
+		{
+			aInput = true;
+			bInput = false;
+			aport = &a.input;
+			bport = &b.output;
+		}
 
 		if (isArray(aOut) && isArray(bIn) && getArrayNumber(aOut) == -1 && getArrayNumber(bIn) == -1)
 		{
@@ -469,7 +506,7 @@ struct Connector
 				{
 					XYCoord p0 = a.getConnectionPos(a.getConnectionIndex(aIndexed, aInput), aInput);
 					XYCoord p1 = b.getConnectionPos(b.getConnectionIndex(bIndexed, bInput), bInput);
-					drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y,	(*aport)[aIndexed] ? on : off);
+					drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y,	(*aport)[aIndexed].data ? on : off);
 				}
 				else
 					break;
@@ -479,7 +516,7 @@ struct Connector
 		{
 			XYCoord p0 = a.getConnectionPos(a.getConnectionIndex(aOut, aInput), aInput);
 			XYCoord p1 = b.getConnectionPos(b.getConnectionIndex(bIn, bInput), bInput);
-			drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y, (*aport)[aOut] ? on : off);
+			drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y, (*aport)[aOut].data ? on : off);
 		}
 	}
 
@@ -494,6 +531,7 @@ struct Board
 	std::vector<Connector> connections;
 	std::vector<Connector> connectionsIn;
 	std::vector<Connector> connectionsOut;
+	std::vector<Connector> connectionsInOut;
 
 	Board()
 	{
@@ -518,6 +556,12 @@ struct Board
 		connectionsOut.push_back(Connector(a, aOut, b, bOut, -1));
 	}
 
+	// a.in -> a.out
+	void connectInOut(LogicBlock& block, const std::string& in, const std::string& out)
+	{
+		connectionsInOut.push_back(Connector(block, in, block, out, 2));
+	}
+
 	LogicBlock& add(const LogicBlock& block)
 	{
 		return board.add(block);
@@ -525,6 +569,8 @@ struct Board
 
 	void tick()
 	{
+		board.resetWrittenTo();
+
 		for (auto& c : connections)
 			c.tick();
 
@@ -532,6 +578,9 @@ struct Board
 			c.tick();
 
 		board.tick();
+
+		for (auto& c : connectionsInOut)
+			c.tick();
 
 		for (auto& c : connectionsOut)
 			c.tick();

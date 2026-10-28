@@ -185,11 +185,14 @@ static LogicBlock& createNBitNumber(Board& board, LogicBlock& parent, int n, int
 {
 	LogicBlock& num = parent.add(LogicBlock("", arrayToStr("out", n), std::to_string(n) + "bitNumber"));
 
+	bool neg = n < 0;
 	for (int i = 0; i < n; ++i)
 	{
 		num.output[arrayToStr("out", i)] = (input & 1);
 		input >>= 1;
 	}
+	if (neg && n != 64)
+		num.output[arrayToStr("out", n - 1)] = neg;
 
 	return num;
 }
@@ -423,12 +426,46 @@ static LogicBlock& createNBitOutput(Board& board, LogicBlock& parent, int n)
 static int64_t readNBitOutput(const LogicBlock& block, int n)
 {
 	int64_t num = 0;
+	bool neg = block.input.at(arrayToStr("in", n - 1));
 	for (int i = n - 1; i >= 0; --i)
 	{
 		num <<= 1ull;
-		num |= (int64_t)block.input.at(arrayToStr("in", i));
+		bool value = block.input.at(arrayToStr("in", i));
+		if (neg)
+			value = !value;
+		num |= (int64_t)value;
 	}
+	if (neg)
+		num = -(num + 1);
 	return num;
+}
+
+static int64_t readNBitInput(const LogicBlock& block, int n)
+{
+	int64_t num = 0;
+	bool neg = block.output.at(arrayToStr("out", n - 1));
+	for (int i = n - 1; i >= 0; --i)
+	{
+		num <<= 1ull;
+		bool value = block.output.at(arrayToStr("out", i));
+		if (neg)
+			value = !value;
+		num |= (int64_t)value;
+	}
+	if (neg)
+		num = -(num + 1);
+	return num;
+}
+
+static void drawNumberLabel(SDL_Surface* surface, LogicBlock& block, int n, bool isOutput)
+{
+	XYCoord coord = block.getConnectionPos(0, false);
+	int64_t value = 0;
+	if (isOutput)
+		value = readNBitOutput(block, n);
+	else
+		value = readNBitInput(block, n);
+	drawTextFA(surface, coord.x - font_w / 2, coord.y, 1, -1, 0, rgb(255, 255, 255), "%lld", value);
 }
 
 int main()
@@ -440,9 +477,9 @@ int main()
 
 	Board board;
 
-	int n = 16;
-	LogicBlock& a = createNBitNumber(board, board.board, n, 0b0111111111111111);
-	LogicBlock& b = createNBitNumber(board, board.board, n, 0b1111111111111111);
+	int n = 32;
+	LogicBlock& a = createNBitNumber(board, board.board, n, 1053443);
+	LogicBlock& b = createNBitNumber(board, board.board, n, 213454);
 	LogicBlock& sub = createNBitSub(board, board.board, n);
 	LogicBlock& out = createNBitOutput(board, board.board, n);
 	LogicBlock& power = board.add(LogicBlockOn);
@@ -478,6 +515,11 @@ int main()
 		clearScreen(surface, rgb(0, 0, 0));
 
 		board.draw(surface);
+
+		drawNumberLabel(surface, a, n, false);
+		drawNumberLabel(surface, b, n, false);
+		drawNumberLabel(surface, out, n, true);
+		
 		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %d", ticks);
 
 		SDL_UpdateWindowSurface(window);

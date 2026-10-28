@@ -438,6 +438,7 @@ int main()
 	board.board.recalc();
 	
 	int ticks = 0;
+	bool pause = false;
 	bool running = true;
 	while (running)
 	{
@@ -452,50 +453,22 @@ int main()
 			}
 		}
 		clearScreen(surface, rgb(0, 0, 0));
+
 		board.draw(surface);
 		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %d", ticks);
+
 		SDL_UpdateWindowSurface(window);
 
-		if (!add.output["sigout"])
+		if (!pause)
 		{
 			board.tick();
 			++ticks;
 		}
+		if (add.output["sigout"])
+			pause = true;
 		SDL_Delay(250);
 	}
 	SDL_DestroyWindow(window);
-
-	//int i = 0;
-	//for (; readNBitOutput(out, n) != 54321 + 12345; ++i)
-	//	board.tick();
-	//std::cout << i << '\n';
-	//
-	//sub.print();
-	//std::cout << readNBitOutput(out, n) << '\n';
-
-	//LogicBlock& a = createNBitNumber(board, board.board, 2, 0b11);
-	//LogicBlock& b = createNBitNumber(board, board.board, 2, 0b11);
-	//LogicBlock& add = createNBitAdd(board, board.board, 2);
-	//LogicBlock& power = board.add(LogicBlockOn);
-	//
-	//board.connect(a, "out[]", add, "a[]");
-	//board.connect(b, "out[]", add, "b[]");
-	//board.connect(power, "out", add, "sigin");
-	//
-	//for (int i = 0; i < 65; ++i)
-	//{
-	//	board.tick();
-	//	add.print();
-	//}
-
-	//LogicBlock& compare = createNBitCompare(board, 64);
-	//LogicBlock& num0 = createNumberNBit(board, 45, 64);
-	//LogicBlock& num1 = createNumberNBit(board, 45, 64);
-	//board.connect(num0, "out[]", compare, "a[]");
-	//board.connect(num1, "out[]", compare, "b[]");
-	//for (int i = 0; i < 10; ++i)
-	//	board.tick();
-	//compare.print();
 
 	SDL_Quit();
 

@@ -154,6 +154,80 @@ void drawCircleA(SDL_Surface* surface, Sint32 x, Sint32 y, float alignX, float a
 	drawCircle(surface, x - r * alignX, y - r * alignY, r, color);
 }
 
+PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sint32 x1, Sint32 y1, Sint32 thickness, Uint32 color)
+{
+	Sint32 dx = x1 - x0;
+	Sint32 dy = y1 - y0;
+
+	if (dx == 0) // vertical
+	{
+		if (dy < 0)
+		{
+			Sint32 temp = y0;
+			y0 = y1;
+			y1 = temp;
+			dy = -dy;
+		}
+		for (Sint32 y = y0; y <= y1; ++y)
+			setPixel(surface, x0, y, color);
+	}
+	else if (dy == 0) // horizontal
+	{
+		if (dx < 0)
+		{
+			Sint32 temp = x0;
+			x0 = x1;
+			x1 = temp;
+			dx = -dx;
+		}
+		for (Sint32 x = x0; x <= x1; ++x)
+			setPixel(surface, x, y0, color);
+	}
+	else
+	{
+		if (abs(dx) >= abs(dy)) // use x as loop var
+		{
+			if (dx < 0)
+			{
+				Sint32 temp = x0;
+				x0 = x1;
+				x1 = temp;
+				temp = y0;
+				y0 = y1;
+				y1 = temp;
+				dx = x1 - x0;
+				dy = y1 - y0;
+			}
+			float slope = dy / (float)dx;
+			for (Sint32 x = x0; x <= x1; ++x)
+			{
+				float y = roundf(slope * (x - x0) + y0);
+				setPixel(surface, x, y, color);
+			}
+		}
+		else // use y as loop var
+		{
+			if (dy < 0)
+			{
+				Sint32 temp = x0;
+				x0 = x1;
+				x1 = temp;
+				temp = y0;
+				y0 = y1;
+				y1 = temp;
+				dx = x1 - x0;
+				dy = y1 - y0;
+			}
+			float slope = dx / (float)dy;
+			for (Sint32 y = y0; y <= y1; ++y)
+			{
+				float x = roundf(slope * (y - y0) + x0);
+				setPixel(surface, x, y, color);
+			}
+		}
+	}
+}
+
 #include "bulletinV1_font.h"
 
 int letterSpacing = 1;

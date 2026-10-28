@@ -33,6 +33,12 @@ static bool isArray(const std::string& str)
 	return str.find('[', 0) != std::string::npos;
 }
 
+struct XYCoord
+{
+	XYCoord(int x = 0, int y = 0) : x(x), y(y) {}
+	int x, y;
+};
+
 struct strCmpWithArray
 {
 	bool operator()(const std::string& a, const std::string& b) const
@@ -65,7 +71,7 @@ struct LogicBlock
 	std::list<LogicBlock> blocks;
 	std::string label;
 
-	int x = 0, y = 0, w = 0, h = 0;
+	int x = 0, y = 0, w = 0, h = 0, bx = 0, by = 0;
 	bool expand = true;
 
 	LogicBlock() = default;
@@ -217,12 +223,14 @@ struct LogicBlock
 		this->expand = expand;
 	}
 
-	void recalc()
+	void recalc(int px = 0, int py = 0)
 	{
+		bx = px + x;
+		by = py + y;
 		for (auto& b : blocks)
 		{
 			if (expand)
-				b.recalc();
+				b.recalc(bx, by);
 		}
 
 		int hfont_w = font_w / 2;
@@ -257,13 +265,13 @@ struct LogicBlock
 		h += hfont_h;
 	}
 
-	void draw(SDL_Surface* surface, int px, int py)
+	void draw(SDL_Surface* surface)
 	{
-		int bx = px + x;
-		int by = py + y;
-
 		int hfont_h = font_h / 2;
 		int hfont_w = font_w / 2;
+
+		Uint32 on = rgb(255, 255, 0);
+		Uint32 off = rgb(63, 63, 0);
 
 		drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
 		drawRect(surface, bx, by, w, hfont_h, rgb(15, 15, 15)); // titlebar
@@ -271,26 +279,69 @@ struct LogicBlock
 		drawRect(surface, bx + w - hfont_w, by + hfont_h, hfont_w, h - hfont_h, rgb(15, 15, 63)); // outputs
 		drawText(surface, bx + hfont_w, by, 0, rgb(255, 255, 255), label.data()); // title
 		
-		int off = by + hfont_h;
+		int index = 0;
 		for (auto& i : input)
 		{
-			drawCircleA(surface, bx, off, -1, -1, hfont_w / 2, 
-				i.second ? rgb(255, 255, 0) : rgb(63, 63, 0));
-			off += hfont_w;
+			XYCoord xy = getConnectionPos(index, true);
+			drawCircle(surface, xy.x, xy.y, hfont_w / 2, 
+				i.second ? on : off);
+			++index;
 		}
-		off = by + hfont_h;
+		index = 0;
 		for (auto& i : output)
 		{
-			drawCircleA(surface, bx + w - hfont_w, off, -1, -1, hfont_w / 2,
-				i.second ? rgb(255, 255, 0) : rgb(63, 63, 0));
-			off += hfont_w;
+			XYCoord xy = getConnectionPos(index, false);
+			drawCircle(surface, xy.x, xy.y, hfont_w / 2,
+				i.second ? on : off);
+			++index;
 		}
 
 		if (expand)
 			for (auto& b : blocks)
-				b.draw(surface, bx, by);
+				b.draw(surface);
 
 		drawRectOut(surface, bx - 1, by - 1, w + 2, h + 2, 1, rgb(127, 127, 127));
+	}
+
+	XYCoord getConnectionPos(int index, bool isInput)
+	{
+		if (index == -1)
+			return XYCoord();
+
+		int hfont_w = font_w / 2;
+		int hfont_h = font_h / 2;
+
+		int y = by + hfont_h + index * hfont_w;
+		int x = bx;
+		if (!isInput)
+			x += w - hfont_w;
+
+		return XYCoord(x + hfont_w, y + hfont_w);
+	}
+
+	int getConnectionIndex(const std::string& name, bool isInput)
+	{
+		int index = 0;
+		if (isInput)
+		{
+			for (auto& i : input)
+			{
+				if (i.first == name)
+					return index;
+				++index;
+			}
+		}
+		else
+		{
+			for (auto& i : output)
+			{
+				if (i.first == name)
+					return index;
+				++index;
+			}
+		}
+		printf("bad!!! %s\n", name.data());
+		return -1;
 	}
 };
 
@@ -344,6 +395,61 @@ struct Connector
 		}
 		else // could have done a zero out, then or into outputs if i was smarter
 			(*bport)[bIn] = (*aport)[aOut];
+	}
+
+	void draw(SDL_Surface* surface)
+	{
+		Uint32 on = rgb(255, 255, 0);
+		Uint32 off = rgb(63, 63, 0);
+
+		bool aInput = false;
+		bool bInput = true;
+		std::map<std::string, bool, strCmpWithArray>* aport = NULL;
+		std::map<std::string, bool, strCmpWithArray>* bport = NULL;
+		if (mode == 0)
+		{
+			aport = &a.output;
+			bport = &b.input;
+		}
+		else if (mode == 1)
+		{
+			aInput = true;
+			aport = &a.input;
+			bport = &b.input;
+		}
+		else if (mode == -1)
+		{
+			bInput = false;
+			aport = &a.output;
+			bport = &b.output;
+		}
+
+		if (isArray(aOut) && isArray(bIn) && getArrayNumber(aOut) == -1 && getArrayNumber(bIn) == -1)
+		{
+			std::string aOut2(aOut, 0, aOut.size() - 2);
+			std::string bIn2(bIn, 0, bIn.size() - 2);
+			// copy all
+			for (int i = 0;; ++i)
+			{
+				std::string aIndexed = arrayToStr(aOut2, i);
+				std::string bIndexed = arrayToStr(bIn2, i);
+				if (aport->find(aIndexed) != aport->end() &&
+					bport->find(bIndexed) != bport->end())
+				{
+					XYCoord p0 = a.getConnectionPos(a.getConnectionIndex(aIndexed, aInput), aInput);
+					XYCoord p1 = b.getConnectionPos(b.getConnectionIndex(bIndexed, bInput), bInput);
+					drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y,	(*aport)[aIndexed] ? on : off);
+				}
+				else
+					break;
+			}
+		}
+		else
+		{
+			XYCoord p0 = a.getConnectionPos(a.getConnectionIndex(aOut, aInput), aInput);
+			XYCoord p1 = b.getConnectionPos(b.getConnectionIndex(bIn, bInput), bInput);
+			drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y, (*aport)[aOut] ? on : off);
+		}
 	}
 
 	LogicBlock& a, &b;
@@ -402,6 +508,15 @@ struct Board
 
 	void draw(SDL_Surface* surface)
 	{
-		board.draw(surface, 0, 0);
+		board.draw(surface);
+		
+		for (auto& c : connections)
+			c.draw(surface);
+
+		for (auto& c : connectionsIn)
+			c.draw(surface);
+
+		for (auto& c : connectionsOut)
+			c.draw(surface);
 	}
 };

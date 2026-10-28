@@ -154,7 +154,7 @@ void drawCircleA(SDL_Surface* surface, Sint32 x, Sint32 y, float alignX, float a
 	drawCircle(surface, x - r * alignX, y - r * alignY, r, color);
 }
 
-PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sint32 x1, Sint32 y1, Sint32 thickness, Uint32 color)
+PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sint32 x1, Sint32 y1, Uint32 color)
 {
 	Sint32 dx = x1 - x0;
 	Sint32 dy = y1 - y0;

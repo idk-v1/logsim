@@ -358,7 +358,7 @@ PIXEL_FN void drawCircleA(SDL_Surface* surface, Sint32 x, Sint32 y,
 // Draws line from point0 to point1
 // x0, y0 are point0 coordinates
 // x1, y1 are point1 coordinates
-PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sint32 x1, Sint32 y1, Sint32 thickness, Uint32 color);
+PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sint32 x1, Sint32 y1, Uint32 color);
 
 
 // It's fine to change these

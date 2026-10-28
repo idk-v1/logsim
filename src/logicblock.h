@@ -270,7 +270,7 @@ struct LogicBlock
 			maxLabel = std::max(maxLabel, 1 + inLen + outLen);
 		}
 		// fit name or at least 1 if blank
-		w = hfont_w * std::max(maxLabel, label.size());
+		w = hfont_w * (int)std::max(maxLabel, label.size());
 		if (expand)
 			for (auto& b : blocks)
 				if (b.w)
@@ -280,7 +280,7 @@ struct LogicBlock
 		w += 2 * font_h;
 
 		// fit max of input or output length or at least 1
-		h = hfont_h * std::max(1ull, std::max(input.size(), output.size()));
+		h = hfont_h * (int)std::max(1ull, std::max(input.size(), output.size()));
 		if (expand)
 			for (auto& b : blocks)
 				if (b.h)

@@ -337,9 +337,10 @@ static LogicBlock& createNBitShiftM(Board& board, LogicBlock& parent, int n, int
 		int index = i + m;
 		if (index >= 0 && index < n)
 		{
-			LogicBlock& delay = shift.add(LogicBlockDelay);
-			board.connectToIn(shift, arrayToStr("in", i), delay, "in");
-			board.connectToOut(delay, "out", shift, arrayToStr("out", index));
+			board.connectInOut(shift, arrayToStr("in", i), arrayToStr("out", index));
+			//LogicBlock& delay = shift.add(LogicBlockDelay);
+			//board.connectToIn(shift, arrayToStr("in", i), delay, "in");
+			//board.connectToOut(delay, "out", shift, arrayToStr("out", index));
 		}
 	}
 
@@ -420,7 +421,7 @@ int main()
 	Board board;
 
 	int n = 16;
-	LogicBlock& a = createNBitNumber(board, board.board, n, 1);
+	LogicBlock& a = createNBitNumber(board, board.board, n, 10);
 	LogicBlock& b = createNBitNumber(board, board.board, n, 1);
 	LogicBlock& sub = createNBitSub(board, board.board, n);
 	LogicBlock& out = createNBitOutput(board, board.board, n);
@@ -433,9 +434,14 @@ int main()
 	
 	board.connect(a, "out[]", sub, "a[]");
 	board.connect(b, "out[]", sub, "b[]");
-	board.connect(sub, "out[]", out, "in[]");
+	//board.connect(sub, "out[]", out, "in[]");
 
 	board.connect(power, "out", sub, "sigin");
+
+	LogicBlock& shift = createNBitShiftM(board, board.board, n, 1);
+	board.connect(sub, "out[]", shift, "in[]");
+	board.connect(shift, "out[]", out, "in[]");
+	shift.setPos(800, 50);
 
 	//LogicBlock& clock = createClock(board, board.board);
 	//clock.setPos(15, 15);

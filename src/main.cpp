@@ -418,6 +418,40 @@ static LogicBlock& createNBitGate(Board& board, LogicBlock& parent, int n)
 	return gate;
 }
 
+// 1 cycle
+static LogicBlock& createNBitShiftM(Board& board, LogicBlock& parent, int n, int m)
+{
+	LogicBlock& shift = parent.add(LogicBlock(arrayToStr("in", n), arrayToStr("out", n),
+		std::to_string(n) + "bitShift" + (m > 0 ? "Up" : "Down") + std::to_string(abs(m))));
+
+	for (int i = 0; i < n; ++i)
+	{
+		int index = i + m;
+		if (index >= 0 && index < n)
+		{
+			LogicBlock& delay = shift.add(LogicBlockDelay);
+			board.connectToIn(shift, arrayToStr("in", i), delay, "in");
+			board.connectToOut(delay, "out", shift, arrayToStr("out", index));
+		}
+	}
+
+	return shift;
+}
+
+// 1 cycle on, 1 off
+static LogicBlock& createClock(Board& board, LogicBlock& parent)
+{
+	LogicBlock& clock = parent.add(LogicBlock("", "out", "clock"));
+
+	LogicBlock& power = clock.add(LogicBlockOn);
+	LogicBlock& tempxor = clock.add(LogicBlockXor);
+	board.connect(power, "out", tempxor, "a");
+	board.connectToOut(tempxor, "out", clock, "out");
+	board.connect(tempxor, "out", tempxor, "b");
+
+	return clock;
+}
+
 static LogicBlock& createNBitOutput(Board& board, LogicBlock& parent, int n)
 {
 	return parent.add(LogicBlock(arrayToStr("in", n), "", std::to_string(n) + "bitOutput"));
@@ -465,7 +499,7 @@ static void drawNumberLabel(SDL_Surface* surface, LogicBlock& block, int n, bool
 		value = readNBitOutput(block, n);
 	else
 		value = readNBitInput(block, n);
-	drawTextFA(surface, coord.x - font_w / 2, coord.y, 1, -1, 0, rgb(255, 255, 255), "%lld", value);
+	drawTextFA(surface, coord.x - font_w / 2, block.by - font_h / 2, 1, -1, 0, rgb(255, 255, 255), "%lld", value);
 }
 
 int main()
@@ -477,9 +511,9 @@ int main()
 
 	Board board;
 
-	int n = 32;
-	LogicBlock& a = createNBitNumber(board, board.board, n, 1053443);
-	LogicBlock& b = createNBitNumber(board, board.board, n, 213454);
+	int n = 16;
+	LogicBlock& a = createNBitNumber(board, board.board, n, 12345);
+	LogicBlock& b = createNBitNumber(board, board.board, n, 2345);
 	LogicBlock& sub = createNBitSub(board, board.board, n);
 	LogicBlock& out = createNBitOutput(board, board.board, n);
 	LogicBlock& power = board.add(LogicBlockOn);
@@ -494,6 +528,9 @@ int main()
 	board.connect(sub, "out[]", out, "in[]");
 
 	board.connect(power, "out", sub, "sigin");
+
+	LogicBlock& clock = createClock(board, board.board);
+	clock.setPos(15, 15);
 
 	board.board.recalc();
 	
@@ -529,8 +566,8 @@ int main()
 			board.tick();
 			++ticks;
 		}
-		if (sub.output["sigout"])
-			pause = true;
+		//if (sub.output["sigout"])
+		//	pause = true;
 		SDL_Delay(250);
 	}
 	SDL_DestroyWindow(window);

@@ -232,42 +232,55 @@ struct LogicBlock
 
 	void recalc(int px = 0, int py = 0)
 	{
-		bx = px + x;
-		by = py + y;
+
+		int hfont_w = font_w / 2;
+		int hfont_h = font_h / 2;
+
+		bx = px + x + hfont_h;
+		by = py + y + hfont_h;
 		for (auto& b : blocks)
 		{
 			if (expand)
 				b.recalc(bx, by);
 		}
 
-		int hfont_w = font_w / 2;
-		int hfont_h = font_h / 2;
-
-		// fit name or at least 1 if blank
-		w = hfont_w * std::max(1ull, label.size());
-		if (expand)
+		size_t maxLabel = 1;
+		auto in = input.begin();
+		auto out = output.begin();
+		for (int i = 0; i < input.size() || i < output.size(); ++i)
 		{
-			for (auto& b : blocks)
+			size_t inLen = 0;
+			size_t outLen = 0;
+
+			if (in != input.end())
 			{
-				if (b.w)
-					if (b.x + b.w > w)
-						w = b.x + b.w;
+				inLen = in->first.size();
+				in = std::next(in);
 			}
+			if (out != output.end())
+			{
+				outLen = out->first.size();
+				out = std::next(out);
+			}
+			maxLabel = std::max(maxLabel, 1 + inLen + outLen);
 		}
-		// 2*font_w for input/output on sides
-		w += font_w * 2;
+		// fit name or at least 1 if blank
+		w = hfont_w * std::max(maxLabel, label.size());
+		if (expand)
+			for (auto& b : blocks)
+				if (b.w)
+					w = std::max(w, b.x + b.w);
+		
+		// 2*font_h for input/output on sides
+		w += 2 * font_h;
 
 		// fit max of input or output length or at least 1
-		h = hfont_w * std::max(1ull, std::max(input.size(), output.size()));
+		h = hfont_h * std::max(1ull, std::max(input.size(), output.size()));
 		if (expand)
-		{
 			for (auto& b : blocks)
-			{
 				if (b.h)
-					if (b.y + b.h > h)
-						h = b.y + b.h;
-			}
-		}
+					h = std::max(h, b.y + b.h);
+		
 		// hfont_h for title
 		h += hfont_h;
 	}
@@ -282,8 +295,8 @@ struct LogicBlock
 
 		drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
 		drawRect(surface, bx, by, w, hfont_h, rgb(15, 15, 15)); // titlebar
-		drawRect(surface, bx, by + hfont_h, hfont_w, h - hfont_h, rgb(63, 15, 15)); // inputs
-		drawRect(surface, bx + w - hfont_w, by + hfont_h, hfont_w, h - hfont_h, rgb(15, 15, 63)); // outputs
+		drawRect(surface, bx, by + hfont_h, hfont_h, h - hfont_h, rgb(63, 15, 15)); // inputs
+		drawRect(surface, bx + w - hfont_h, by + hfont_h, hfont_h, h - hfont_h, rgb(15, 15, 63)); // outputs
 		drawText(surface, bx + hfont_w, by, 0, rgb(255, 255, 255), label.data()); // title
 		
 		int index = 0;
@@ -292,6 +305,8 @@ struct LogicBlock
 			XYCoord xy = getConnectionPos(index, true);
 			drawCircle(surface, xy.x, xy.y, hfont_w / 2, 
 				i.second ? on : off);
+			drawTextA(surface, xy.x + hfont_w, xy.y, -1, 0, 0, 
+				rgb(255, 255, 255), i.first.data());
 			++index;
 		}
 		index = 0;
@@ -300,6 +315,9 @@ struct LogicBlock
 			XYCoord xy = getConnectionPos(index, false);
 			drawCircle(surface, xy.x, xy.y, hfont_w / 2,
 				i.second ? on : off);
+			drawTextA(surface, xy.x - hfont_w, xy.y, 1, 0, 0, 
+				rgb(255, 255, 255), i.first.data());
+
 			++index;
 		}
 
@@ -318,15 +336,15 @@ struct LogicBlock
 		int hfont_w = font_w / 2;
 		int hfont_h = font_h / 2;
 
-		int y = by + hfont_h + index * hfont_w;
+		int y = by + hfont_h + index * hfont_h;
 		int x = bx;
 		if (!isInput)
-			x += w - hfont_w;
+			x += w - hfont_h;
 
 		if (x < 0)
 			printf("bad\n");
 
-		return XYCoord(x + hfont_w / 2, y + hfont_w / 2);
+		return XYCoord(x + hfont_h / 2, y + hfont_h / 2);
 	}
 
 	int getConnectionIndex(const std::string& name, bool isInput)

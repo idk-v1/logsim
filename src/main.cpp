@@ -47,8 +47,8 @@ static LogicBlock& createHalfAdd(Board& board, LogicBlock& parent)
 // n cycles
 static LogicBlock& createNBitAdd1(Board& board, LogicBlock& parent, int n)
 {
-	LogicBlock& add = parent.add(LogicBlock(arrayToStr("a", n), 
-		arrayToStr("out|overflow", n), std::to_string(n) + "bitAdd1"));
+	LogicBlock& add = parent.add(LogicBlock(arrayToStr("a", n) + "|sigin",
+		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitAdd1"));
 
 	LogicBlock* oldAdd = NULL;
 	LogicBlock& one = add.add(LogicBlockOn);
@@ -69,6 +69,11 @@ static LogicBlock& createNBitAdd1(Board& board, LogicBlock& parent, int n)
 	}
 	if (oldAdd)
 		board.connectToOut(*oldAdd, "carry", add, "overflow");
+
+	LogicBlock& delay = createNDelay(board, add, n);
+	delay.setExpand(false);
+	board.connectToIn(add, "sigin", delay, "in");
+	board.connectToOut(delay, "out", add, "sigout");
 
 	return add;
 }
@@ -202,7 +207,7 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 	{
 		LogicBlock& tempAdd = createFullAddFast(board, add);
 		tempAdd.setPos(15 + (i / (n / 4)) * 140, 15 + (i % (n / 4)) * 105);
-		//tempAdd.setExpand(false);
+		tempAdd.setExpand(false);
 		board.connectToIn(add, arrayToStr("a", i), tempAdd, "a");
 		board.connectToIn(add, arrayToStr("b", i), tempAdd, "b");
 
@@ -228,7 +233,7 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 
 	LogicBlock& delay = createNDelay(board, add, 2 * n + 1);
 	delay.setPos(15 + ((n + 1) / (n / 4)) * 140, 15 + ((n + 1) % (n / 4)) * 50);
-	//delay.setExpand(false);
+	delay.setExpand(false);
 	board.connectToIn(add, "sigin", delay, "in");
 	board.connectToOut(delay, "out", add, "sigout");
 
@@ -253,13 +258,25 @@ static LogicBlock& createNBitInvert(Board& board, LogicBlock& parent, int n)
 // 3n + 3 cycles
 static LogicBlock& createNBitSub(Board& board, LogicBlock& parent, int n)
 {
-	LogicBlock& sub = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n),
-		arrayToStr("out", n) + "|overflow", std::to_string(n) + "bitSubtract"));
+	LogicBlock& sub = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
+		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitSubtract"));
 
 	LogicBlock& inv = createNBitInvert(board, sub, n);
 	LogicBlock& tempAdd = createNBitAdd1(board, sub, n);
 	LogicBlock& add = createNBitAdd(board, sub, n);
 	LogicBlock& ret = sub.add(LogicBlockNot);
+
+	LogicBlock& delay0 = sub.add(LogicBlockDelay);
+	delay0.setPos(15, 200);
+	delay0.setExpand(false);
+
+	inv.setExpand(false);
+	inv.setPos(15, 100);
+	tempAdd.setExpand(false);
+	tempAdd.setPos(150, 100);
+	add.setExpand(false);
+	add.setPos(300, 15);
+	ret.setPos(450, 100);
 
 	// step 0
 	// inv
@@ -275,6 +292,10 @@ static LogicBlock& createNBitSub(Board& board, LogicBlock& parent, int n)
 	// ret
 	// delay1
 
+	board.connectToIn(sub, "sigin", delay0, "in");
+	board.connect(delay0, "out", tempAdd, "sigin");
+	board.connect(tempAdd, "sigout", add, "sigin");
+
 	board.connectToIn(sub, "b[]", inv, "in[]"); // 0
 	board.connect(inv, "out[]", tempAdd, "a[]"); // 1
 
@@ -284,6 +305,8 @@ static LogicBlock& createNBitSub(Board& board, LogicBlock& parent, int n)
 	board.connectToOut(add, "out[]", sub, "out[]"); // 3
 	board.connect(add, "overflow", ret, "in"); // 3
 	board.connectToOut(ret, "out", sub, "overflow"); // 4
+
+	board.connectToOut(add, "sigout", sub, "sigout");
 
 	return sub;
 }
@@ -418,22 +441,22 @@ int main()
 	Board board;
 
 	int n = 16;
-	LogicBlock& a = createNBitNumber(board, board.board, n, 0b1111111111111111);
-	LogicBlock& b = createNBitNumber(board, board.board, n, 0b0000000000000001);
-	LogicBlock& add = createNBitAdd(board, board.board, n);
+	LogicBlock& a = createNBitNumber(board, board.board, n, 0b0111111111111111);
+	LogicBlock& b = createNBitNumber(board, board.board, n, 0b1111111111111111);
+	LogicBlock& sub = createNBitSub(board, board.board, n);
 	LogicBlock& out = createNBitOutput(board, board.board, n);
 	LogicBlock& power = board.add(LogicBlockOn);
 	a.setPos(15, 50);
-	b.setPos(15, 200);
-	add.setPos(100, 50);
+	b.setPos(15, 150);
+	sub.setPos(100, 50);
 	out.setPos(1000, 50);
 	power.setPos(15, 350);
 	
-	board.connect(a, "out[]", add, "a[]");
-	board.connect(b, "out[]", add, "b[]");
-	board.connect(add, "out[]", out, "in[]");
+	board.connect(a, "out[]", sub, "a[]");
+	board.connect(b, "out[]", sub, "b[]");
+	board.connect(sub, "out[]", out, "in[]");
 
-	board.connect(power, "out", add, "sigin");
+	board.connect(power, "out", sub, "sigin");
 
 	board.board.recalc();
 	
@@ -464,7 +487,7 @@ int main()
 			board.tick();
 			++ticks;
 		}
-		if (add.output["sigout"])
+		if (sub.output["sigout"])
 			pause = true;
 		SDL_Delay(250);
 	}

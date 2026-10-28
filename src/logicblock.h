@@ -72,7 +72,7 @@ struct LogicBlock
 	std::string label;
 
 	int x = 0, y = 0, w = 0, h = 0, bx = 0, by = 0;
-	bool expand = true;
+	bool expand = true, parExpand = true;
 
 	LogicBlock() = default;
 	LogicBlock(const std::string& label)
@@ -221,6 +221,13 @@ struct LogicBlock
 	void setExpand(bool expand)
 	{
 		this->expand = expand;
+		for (auto& b : blocks)
+			b.setExpandRec(expand);
+	}
+
+	void setExpandRec(bool expand)
+	{
+		parExpand = expand;
 	}
 
 	void recalc(int px = 0, int py = 0)
@@ -316,7 +323,10 @@ struct LogicBlock
 		if (!isInput)
 			x += w - hfont_w;
 
-		return XYCoord(x + hfont_w, y + hfont_w);
+		if (x < 0)
+			printf("bad\n");
+
+		return XYCoord(x + hfont_w / 2, y + hfont_w / 2);
 	}
 
 	int getConnectionIndex(const std::string& name, bool isInput)
@@ -340,7 +350,7 @@ struct LogicBlock
 				++index;
 			}
 		}
-		printf("bad!!! %s\n", name.data());
+		printf("bad!!! %s %s\n", name.data(), label.data());
 		return -1;
 	}
 };
@@ -399,6 +409,9 @@ struct Connector
 
 	void draw(SDL_Surface* surface)
 	{
+		if (!a.parExpand || !b.parExpand)
+			return;
+
 		Uint32 on = rgb(255, 255, 0);
 		Uint32 off = rgb(63, 63, 0);
 

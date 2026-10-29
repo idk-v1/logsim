@@ -350,12 +350,13 @@ static LogicBlock& createNBitShiftM(Board& board, LogicBlock& parent, int n, int
 // n cycles on, n off
 static LogicBlock& createClockN(Board& board, LogicBlock& parent, int n)
 {
-	LogicBlock& clock = parent.add(LogicBlock("", "out", "clock"));
+	LogicBlock& clock = parent.add(LogicBlock("pause", "out", "clock"));
 
 	LogicBlock& tempnot = clock.add(LogicBlockNot);
 	tempnot.setPos(5, 5);
 	LogicBlock* ptr = &tempnot;
 	board.connectToOut(tempnot, "out", clock, "out");
+	board.connectToIn(clock, "pause", tempnot, "in");
 
 	for (int i = 1; i < n; ++i)
 	{
@@ -432,11 +433,13 @@ int main()
 	Board board;
 
 	LogicBlock& clock1 = createClockN(board, board.board, 1);
-	clock1.setPos(15, 15);
+	clock1.setPos(5, 15);
 	LogicBlock& clock2 = createClockN(board, board.board, 2);
 	clock2.setPos(115, 15);
 	LogicBlock& clock3 = createClockN(board, board.board, 3);
-	clock3.setPos(215, 15);
+	clock3.setPos(225, 15);
+	LogicBlock& power = board.add(LogicBlockOn);
+	board.connect(power, "out", clock1, "pause");
 
 
 	//int n = 16;

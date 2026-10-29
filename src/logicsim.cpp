@@ -1,22 +1,29 @@
-#include "board.h"
+#include "logicsim.h"
 
-Board::Board()
+LogicSim::LogicSim() : board("Board") {}
+
+LogicBlock& LogicSim::getBoard()
 {
-	board.label = "Board";
+	return board;
 }
 
-void Board::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b, 
+void LogicSim::recalc()
+{
+	board.recalc(0, 0);
+}
+
+void LogicSim::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b,
 	const std::string& bIndex, bool aIn, bool bIn)
 {
 	connections.push_back(Connector(a, aIndex, b, bIndex, aIn, bIn));
 }
 
-LogicBlock& Board::add(const LogicBlock& block)
+LogicBlock& LogicSim::add(const LogicBlock& block)
 {
 	return board.add(block);
 }
 
-void Board::tick()
+void LogicSim::tick()
 {
 	board.resetWrittenTo();
 
@@ -35,7 +42,7 @@ void Board::tick()
 		c.tick();
 }
 
-void Board::draw(SDL_Surface* surface)
+void LogicSim::draw(SDL_Surface* surface)
 {
 	board.draw(surface);
 

@@ -312,3 +312,8 @@ void LogicBlock::resetWrittenTo()
 	for (auto& o : output)
 		o.second.written = false;
 }
+
+bool LogicBlock::isExpanded() const
+{
+	return parExpand;
+}

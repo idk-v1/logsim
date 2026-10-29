@@ -70,14 +70,6 @@ struct WriteData
 
 struct LogicBlock
 {
-	std::map<std::string, WriteData, strCmpWithArray> input;
-	std::map<std::string, WriteData, strCmpWithArray> output;
-	std::list<LogicBlock> blocks;
-	std::string label;
-
-	int x = 0, y = 0, w = 0, h = 0, bx = 0, by = 0;
-	bool expand = true, parExpand = true;
-
 	LogicBlock() = default;
 	LogicBlock(const std::string& label);
 	LogicBlock(const std::string& in, const std::string& out, const std::string& label);
@@ -103,6 +95,18 @@ struct LogicBlock
 	int getConnectionIndex(const std::string& name, bool isInput);
 
 	void resetWrittenTo();
+
+	bool isExpanded() const;
+
+	std::map<std::string, WriteData, strCmpWithArray> input;
+	std::map<std::string, WriteData, strCmpWithArray> output;
+	std::string label;
+
+private:
+	std::list<LogicBlock> blocks;
+
+	int x = 0, y = 0, w = 0, h = 0, bx = 0, by = 0;
+	bool expand = true, parExpand = true;
 };
 
 #define LogicBlockAnd   LogicBlock("and")

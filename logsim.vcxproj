@@ -137,7 +137,7 @@
   <ItemGroup>
     <ClInclude Include="graphics\bulletinV1_font.h" />
     <ClInclude Include="graphics\graphics.h" />
-    <ClInclude Include="src\board.h" />
+    <ClInclude Include="src\logicsim.h" />
     <ClInclude Include="src\connector.h" />
     <ClInclude Include="src\logicblock.h" />
     <ClInclude Include="SDL3\include\SDL3\SDL.h" />
@@ -229,7 +229,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphics\graphics.c" />
-    <ClCompile Include="src\board.cpp" />
+    <ClCompile Include="src\logicsim.cpp" />
     <ClCompile Include="src\connector.cpp" />
     <ClCompile Include="src\logicblock.cpp" />
     <ClCompile Include="src\main.cpp" />

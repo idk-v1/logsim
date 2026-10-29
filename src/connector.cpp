@@ -41,7 +41,7 @@ void Connector::tick()
 
 void Connector::draw(SDL_Surface* surface)
 {
-	if (!a.parExpand || !b.parExpand)
+	if (!a.isExpanded() || !b.isExpanded())
 		return;
 
 	Uint32 on = rgb(255, 255, 0);

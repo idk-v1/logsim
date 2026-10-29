@@ -111,6 +111,8 @@ private:
 
 #define LogicBlockAnd    LogicBlock("and")
 #define LogicBlockOr     LogicBlock("or")
+#define LogicBlockNor    LogicBlock("nor")
+#define LogicBlockNand   LogicBlock("nand")
 #define LogicBlockXor    LogicBlock("xor")
 #define LogicBlockNot    LogicBlock("not")
 #define LogicBlockDelay  LogicBlock("delay")

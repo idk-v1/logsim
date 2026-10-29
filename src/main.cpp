@@ -347,16 +347,25 @@ static LogicBlock& createNBitShiftM(Board& board, LogicBlock& parent, int n, int
 	return shift;
 }
 
-// 1 cycle on, 1 off
-static LogicBlock& createClock(Board& board, LogicBlock& parent)
+// n cycles on, n off
+static LogicBlock& createClockN(Board& board, LogicBlock& parent, int n)
 {
 	LogicBlock& clock = parent.add(LogicBlock("", "out", "clock"));
 
-	LogicBlock& power = clock.add(LogicBlockOn);
-	LogicBlock& tempxor = clock.add(LogicBlockXor);
-	board.connect(power, "out", tempxor, "a");
-	board.connectToOut(tempxor, "out", clock, "out");
-	board.connect(tempxor, "out", tempxor, "b");
+	LogicBlock& tempnot = clock.add(LogicBlockNot);
+	tempnot.setPos(5, 5);
+	LogicBlock* ptr = &tempnot;
+	board.connectToOut(tempnot, "out", clock, "out");
+
+	for (int i = 1; i < n; ++i)
+	{
+		LogicBlock& delay = clock.add(LogicBlockDelay);
+		delay.setPos(5, i * 25);
+		board.connect(*ptr, "out", delay, "in");
+		ptr = &delay;
+	}
+
+	board.connect(*ptr, "out", tempnot, "in");
 
 	return clock;
 }
@@ -418,30 +427,40 @@ int main()
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	setPixelFormat(surface);
 
+	int stepTime = 500;
+
 	Board board;
 
-	int n = 16;
-	LogicBlock& a = createNBitNumber(board, board.board, n, 10);
-	LogicBlock& b = createNBitNumber(board, board.board, n, 1);
-	LogicBlock& sub = createNBitSub(board, board.board, n);
-	LogicBlock& out = createNBitOutput(board, board.board, n);
-	LogicBlock& power = board.add(LogicBlockOn);
-	a.setPos(15, 50);
-	b.setPos(15, 150);
-	sub.setPos(100, 50);
-	out.setPos(1000, 50);
-	power.setPos(15, 350);
-	
-	board.connect(a, "out[]", sub, "a[]");
-	board.connect(b, "out[]", sub, "b[]");
-	//board.connect(sub, "out[]", out, "in[]");
+	LogicBlock& clock1 = createClockN(board, board.board, 1);
+	clock1.setPos(15, 15);
+	LogicBlock& clock2 = createClockN(board, board.board, 2);
+	clock2.setPos(115, 15);
+	LogicBlock& clock3 = createClockN(board, board.board, 3);
+	clock3.setPos(215, 15);
 
-	board.connect(power, "out", sub, "sigin");
 
-	LogicBlock& shift = createNBitShiftM(board, board.board, n, 1);
-	board.connect(sub, "out[]", shift, "in[]");
-	board.connect(shift, "out[]", out, "in[]");
-	shift.setPos(800, 50);
+	//int n = 16;
+	//LogicBlock& a = createNBitNumber(board, board.board, n, 10);
+	//LogicBlock& b = createNBitNumber(board, board.board, n, 1);
+	//LogicBlock& sub = createNBitSub(board, board.board, n);
+	//LogicBlock& out = createNBitOutput(board, board.board, n);
+	//LogicBlock& power = board.add(LogicBlockOn);
+	//a.setPos(15, 50);
+	//b.setPos(15, 150);
+	//sub.setPos(100, 50);
+	//out.setPos(1000, 50);
+	//power.setPos(15, 350);
+	//
+	//board.connect(a, "out[]", sub, "a[]");
+	//board.connect(b, "out[]", sub, "b[]");
+	////board.connect(sub, "out[]", out, "in[]");
+	//
+	//board.connect(power, "out", sub, "sigin");
+	//
+	//LogicBlock& shift = createNBitShiftM(board, board.board, n, 1);
+	//board.connect(sub, "out[]", shift, "in[]");
+	//board.connect(shift, "out[]", out, "in[]");
+	//shift.setPos(800, 50);
 
 	//LogicBlock& clock = createClock(board, board.board);
 	//clock.setPos(15, 15);
@@ -471,9 +490,9 @@ int main()
 
 		board.draw(surface);
 
-		drawNumberLabel(surface, a, n, false);
-		drawNumberLabel(surface, b, n, false);
-		drawNumberLabel(surface, out, n, true);
+		//drawNumberLabel(surface, a, n, false);
+		//drawNumberLabel(surface, b, n, false);
+		//drawNumberLabel(surface, out, n, true);
 		
 		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %d", ticks);
 
@@ -486,7 +505,7 @@ int main()
 		}
 		//if (sub.output["sigout"])
 		//	pause = true;
-		SDL_Delay(250);
+		SDL_Delay(stepTime);
 	}
 	SDL_DestroyWindow(window);
 

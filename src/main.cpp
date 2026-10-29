@@ -35,7 +35,7 @@ int main()
 	LogicBlock& b = createNBitNumber(sim, sim.getBoard(), n, 1);
 	LogicBlock& sub = createNBitSub(sim, sim.getBoard(), n);
 	LogicBlock& out = createNBitOutput(sim, sim.getBoard(), n);
-	LogicBlock& power = createPowerOn(sim, sim.getBoard());
+	LogicBlock& power = sim.add(LogicBlockOn);
 	a.setPos(15, 50);
 	b.setPos(15, 150);
 	sub.setPos(100, 50);

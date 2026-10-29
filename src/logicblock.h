@@ -113,3 +113,6 @@ private:
 #define LogicBlockOr    LogicBlock("or")
 #define LogicBlockXor   LogicBlock("xor")
 #define LogicBlockNot   LogicBlock("not")
+#define LogicBlockDelay LogicBlock("delay")
+#define LogicBlockOn    LogicBlock("on")
+#define LogicBlockOff   LogicBlock("off")

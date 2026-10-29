@@ -4,22 +4,6 @@
 #include "../graphics/graphics.h"
 #include "../graphics/bulletinV1_font.h"
 
-static LogicBlock& createPowerOn(LogicSim& sim, LogicBlock& parent)
-{
-	LogicBlock& power = parent.add(LogicBlock("", "out", "on"));
-
-	power.output["out"].data = true;
-
-	return power;
-}
-
-static LogicBlock& createPowerOff(LogicSim& sim, LogicBlock& parent)
-{
-	LogicBlock& power = parent.add(LogicBlock("", "out", "off"));
-
-	return power;
-}
-
 // n cycles
 static LogicBlock& createNDelay(LogicSim& sim, LogicBlock& parent, int n)
 {
@@ -28,12 +12,12 @@ static LogicBlock& createNDelay(LogicSim& sim, LogicBlock& parent, int n)
 	LogicBlock* old = NULL;
 	for (int i = 0; i < n; ++i)
 	{
-		LogicBlock& temp = delay.add(LogicBlockOr);
+		LogicBlock& temp = delay.add(LogicBlockDelay);
 		temp.setPos(15 + (i / 10) * 50, 15 + (i % 10) * 30);
 		if (i == 0)
-			sim.connect(delay, "in", temp, "a", inin);
+			sim.connect(delay, "in", temp, "in", inin);
 		else if (old)
-			sim.connect(*old, "out", temp, "a");
+			sim.connect(*old, "out", temp, "in");
 
 		old = &temp;
 	}
@@ -71,7 +55,7 @@ static LogicBlock& createNBitAdd1(LogicSim& sim, LogicBlock& parent, int n)
 		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitAdd1"));
 
 	LogicBlock* oldAdd = NULL;
-	LogicBlock& one = createPowerOn(sim, add);
+	LogicBlock& one = parent.add(LogicBlockOn);
 
 	for (int i = 0; i < n; ++i)
 	{
@@ -107,13 +91,13 @@ static LogicBlock& createFullAdd(LogicSim& sim, LogicBlock& parent)
 	LogicBlock& tempand0 = fullAdd.add(LogicBlockAnd);
 	LogicBlock& tempxor1 = fullAdd.add(LogicBlockXor);
 	LogicBlock& tempand1 = fullAdd.add(LogicBlockAnd);
-	LogicBlock& tempdelay0 = createNDelay(sim, fullAdd, 1);
-	LogicBlock& tempdelay2 = createNDelay(sim, fullAdd, 1);
+	LogicBlock& tempdelay0 = fullAdd.add(LogicBlockDelay);
+	LogicBlock& tempdelay1 = fullAdd.add(LogicBlockDelay);
 
 	// step 0
 	// tempxor0
 	// tempand0
-	// tempdelay2
+	// tempdelay1
 
 	// step 1
 	// tempdelay0
@@ -127,14 +111,14 @@ static LogicBlock& createFullAdd(LogicSim& sim, LogicBlock& parent)
 	sim.connect(fullAdd, "b", tempand0, "b", inin); // 0
 	sim.connect(tempand0, "out", tempdelay0, "in"); // 1
 
-	sim.connect(fullAdd, "c", tempdelay2, "in", inin); // 0
+	sim.connect(fullAdd, "c", tempdelay1, "in", inin); // 0
 
 	sim.connect(tempxor0, "out", tempxor1, "a"); // 1
-	sim.connect(tempdelay2, "out", tempxor1, "b"); // 1
+	sim.connect(tempdelay1, "out", tempxor1, "b"); // 1
 	sim.connect(tempxor1, "out", fullAdd, "out", outout); // 2
 
 	sim.connect(tempxor0, "out", tempand1, "a"); // 1
-	sim.connect(tempdelay2, "out", tempand1, "b"); // 1
+	sim.connect(tempdelay1, "out", tempand1, "b"); // 1
 	sim.connect(tempand1, "out", fullAdd, "carry", outout); // 2
 	sim.connect(tempdelay0, "out", fullAdd, "carry", outout); // 2
 
@@ -206,7 +190,7 @@ static LogicBlock& createNBitSub(LogicSim& sim, LogicBlock& parent, int n)
 	LogicBlock& add = createNBitAdd(sim, sub, n);
 	LogicBlock& ret = sub.add(LogicBlockNot);
 
-	LogicBlock& delay0 = createNDelay(sim, sub, 1);
+	LogicBlock& delay0 = sub.add(LogicBlockDelay);
 	delay0.setPos(15, 200);
 	delay0.setExpand(false);
 
@@ -351,7 +335,7 @@ static LogicBlock& createClockN(LogicSim& sim, LogicBlock& parent, int n)
 
 	for (int i = 1; i < n; ++i)
 	{
-		LogicBlock& delay = createNDelay(sim, clock, 1);
+		LogicBlock& delay = clock.add(LogicBlockDelay);
 		delay.setPos(5, i * 25);
 		sim.connect(*ptr, "out", delay, "in");
 		ptr = &delay;
@@ -367,7 +351,7 @@ static LogicBlock& createPulse(LogicSim& sim, LogicBlock& parent)
 {
 	LogicBlock& pulse = parent.add(LogicBlock("in", "out", "pulse"));
 
-	LogicBlock& tempdelay = createNDelay(sim, pulse, 1);
+	LogicBlock& tempdelay = pulse.add(LogicBlockDelay);
 	LogicBlock& tempxor = pulse.add(LogicBlockXor);
 	LogicBlock& tempand = pulse.add(LogicBlockAnd);
 

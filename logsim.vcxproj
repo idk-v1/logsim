@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClInclude Include="graphics\bulletinV1_font.h" />
     <ClInclude Include="graphics\graphics.h" />
+    <ClInclude Include="src\customblocks.h" />
     <ClInclude Include="src\logicsim.h" />
     <ClInclude Include="src\connector.h" />
     <ClInclude Include="src\logicblock.h" />

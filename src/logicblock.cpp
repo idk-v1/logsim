@@ -109,12 +109,6 @@ void LogicBlock::tick()
 		output["out"].data = input["a"].data != input["b"].data;
 	else if (label == "not")
 		output["out"].data = !input["in"].data;
-	//else if (label == "on")
-	//	output["out"].data = 1;
-	//else if (label == "off")
-	//	output["out"].data = 0;
-	//else if (label == "delay")
-	//	output["out"].data = input["in"].data;
 	else
 		for (auto& b : blocks)
 			b.tick();
@@ -293,7 +287,7 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 			++index;
 		}
 	}
-	printf("bad!!! %s %s\n", name.data(), label.data());
+	printf("%s.%c[%s] doesn't exist", label.data(), isInput ? 'i' : 'o', name.data());
 	return -1;
 }
 

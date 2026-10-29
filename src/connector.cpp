@@ -5,7 +5,34 @@
 
 Connector::Connector(LogicBlock& a, const std::string& aIndex, 
 	LogicBlock& b, const std::string& bIndex, bool aIn, bool bIn) :
-	a(a), b(b), aIndex(aIndex), bIndex(bIndex), aIn(aIn), bIn(bIn) {}
+	a(a), b(b), aIndex(aIndex), bIndex(bIndex), aIn(aIn), bIn(bIn) 
+{
+	std::map<std::string, WriteData, strCmpWithArray>* aport = aIn ? &a.input : &a.output;
+	std::map<std::string, WriteData, strCmpWithArray>* bport = bIn ? &b.input : &b.output;
+
+	if (isArray(aIndex) && getArrayNumber(aIndex) == -1)
+	{
+		std::string aIndex2 = aIndex.substr(0, aIndex.size() - 2);
+		if (aport->find(arrayToStr(aIndex2, 0)) == aport->end())
+			printf("%s.%c[%s] doesn't exist\n", a.label.data(), aIn ? 'i' : 'o', aIndex.data());
+	}
+	else
+	{
+		if (aport->find(aIndex) == aport->end())
+			printf("%s.%c[%s] doesn't exist\n", a.label.data(), aIn ? 'i' : 'o', aIndex.data());
+	}
+	if (isArray(bIndex) && getArrayNumber(bIndex) == -1)
+	{
+		std::string bIndex2 = bIndex.substr(0, bIndex.size() - 2);
+		if (bport->find(arrayToStr(bIndex2, 0)) == bport->end())
+			printf("%s.%c[%s] doesn't exist\n", b.label.data(), bIn ? 'i' : 'o', bIndex.data());
+	}
+	else
+	{
+		if (bport->find(bIndex) == bport->end())
+			printf("%s.%c[%s] doesn't exist\n", b.label.data(), bIn ? 'i' : 'o', bIndex.data());
+	}
+}
 
 void Connector::tick()
 {

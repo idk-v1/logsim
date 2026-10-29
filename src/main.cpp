@@ -1,4 +1,7 @@
 #include "logicblock.h"
+#include "board.h"
+#include "../graphics/graphics.h"
+#include "../graphics/bulletinV1_font.h"
 
 #include <iostream>
 
@@ -13,14 +16,14 @@ static LogicBlock& createNDelay(Board& board, LogicBlock& parent, int n)
 		LogicBlock& temp = delay.add(LogicBlockDelay);
 		temp.setPos(15 + (i / 10) * 50, 15 + (i % 10) * 30);
 		if (i == 0)
-			board.connectToIn(delay, "in", temp, "in");
+			board.connect(delay, "in", temp, "in", inin);
 		else if (old)
 			board.connect(*old, "out", temp, "in");
 
 		old = &temp;
 	}
 	if (old)
-		board.connectToOut(*old, "out", delay, "out");
+		board.connect(*old, "out", delay, "out", outout);
 
 	return delay;
 }
@@ -33,13 +36,13 @@ static LogicBlock& createHalfAdd(Board& board, LogicBlock& parent)
 	LogicBlock& tempxor = add.add(LogicBlockXor);
 	LogicBlock& tempand = add.add(LogicBlockAnd);
 
-	board.connectToIn(add, "a", tempxor, "a");
-	board.connectToIn(add, "b", tempxor, "b");
-	board.connectToIn(add, "a", tempand, "a");
-	board.connectToIn(add, "b", tempand, "b");
+	board.connect(add, "a", tempxor, "a", inin);
+	board.connect(add, "b", tempxor, "b", inin);
+	board.connect(add, "a", tempand, "a", inin);
+	board.connect(add, "b", tempand, "b", inin);
 
-	board.connectToOut(tempxor, "out", add, "out");
-	board.connectToOut(tempand, "out", add, "carry");
+	board.connect(tempxor, "out", add, "out", outout);
+	board.connect(tempand, "out", add, "carry", outout);
 
 	return add;
 }
@@ -56,24 +59,24 @@ static LogicBlock& createNBitAdd1(Board& board, LogicBlock& parent, int n)
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& tempAdd = createHalfAdd(board, add);
-		board.connectToIn(add, arrayToStr("a", i), tempAdd, "a");
+		board.connect(add, arrayToStr("a", i), tempAdd, "a", inin);
 
 		if (i > 0)
 			board.connect(*oldAdd, "carry", tempAdd, "b");
 		else
 			board.connect(one, "out", tempAdd, "b");
 
-		board.connectToOut(tempAdd, "out", add, arrayToStr("out", i));
+		board.connect(tempAdd, "out", add, arrayToStr("out", i), outout);
 
 		oldAdd = &tempAdd;
 	}
 	if (oldAdd)
-		board.connectToOut(*oldAdd, "carry", add, "overflow");
+		board.connect(*oldAdd, "carry", add, "overflow", outout);
 
 	LogicBlock& delay = createNDelay(board, add, n);
 	delay.setExpand(false);
-	board.connectToIn(add, "sigin", delay, "in");
-	board.connectToOut(delay, "out", add, "sigout");
+	board.connect(add, "sigin", delay, "in", inin);
+	board.connect(delay, "out", add, "sigout", outout);
 
 	return add;
 }
@@ -87,9 +90,7 @@ static LogicBlock& createFullAdd(Board& board, LogicBlock& parent)
 	LogicBlock& tempand0   = fullAdd.add(LogicBlockAnd);
 	LogicBlock& tempxor1   = fullAdd.add(LogicBlockXor);
 	LogicBlock& tempand1   = fullAdd.add(LogicBlockAnd);
-	//LogicBlock& tempor     = fullAdd.add(LogicBlockOr);
 	LogicBlock& tempdelay0 = fullAdd.add(LogicBlockDelay);
-	//LogicBlock& tempdelay1 = fullAdd.add(LogicBlockDelay);
 	LogicBlock& tempdelay2 = fullAdd.add(LogicBlockDelay);
 
 	// step 0
@@ -102,29 +103,23 @@ static LogicBlock& createFullAdd(Board& board, LogicBlock& parent)
 	// tempxor1
 	// tempand1
 
-	// step 2
-	// tempdelay1
-	// tempor
+	board.connect(fullAdd, "a", tempxor0, "a", inin); // 0
+	board.connect(fullAdd, "b", tempxor0, "b", inin); // 0
 
-	board.connectToIn(fullAdd, "a", tempxor0, "a"); // 0
-	board.connectToIn(fullAdd, "b", tempxor0, "b"); // 0
+	board.connect(fullAdd,  "a", tempand0, "a", inin); // 0
+	board.connect(fullAdd,  "b", tempand0, "b", inin); // 0
+	board.connect(tempand0, "out", tempdelay0, "in"); // 1
 
-	board.connectToIn(fullAdd, "a", tempand0, "a"); // 0
-	board.connectToIn(fullAdd, "b", tempand0, "b"); // 0
-	board.connect(tempand0,    "out", tempdelay0, "in"); // 1
+	board.connect(fullAdd, "c", tempdelay2, "in", inin); // 0
 
-	board.connectToIn(fullAdd, "c", tempdelay2, "in"); // 0
-
-	board.connect(tempxor0,        "out", tempxor1,   "a"); // 1
-	board.connect(tempdelay2,      "out", tempxor1,   "b"); // 1
-	//board.connect(tempxor1,        "out", tempdelay1, "in"); // 2
-	board.connectToOut(tempxor1, "out", fullAdd,    "out"); // 2
+	board.connect(tempxor0,   "out", tempxor1,   "a"); // 1
+	board.connect(tempdelay2, "out", tempxor1,   "b"); // 1
+	board.connect(tempxor1,   "out", fullAdd,    "out", outout); // 2
 
 	board.connect(tempxor0,   "out", tempand1, "a"); // 1
 	board.connect(tempdelay2, "out", tempand1, "b"); // 1
-	board.connectToOut(tempand1,    "out", fullAdd,  "carry"); // 2
-	board.connectToOut(tempdelay0,  "out", fullAdd,  "carry"); // 2
-	//board.connectToOut(tempor, "out", fullAdd, "carry"); // 3
+	board.connect(tempand1,    "out", fullAdd,  "carry", outout); // 2
+	board.connect(tempdelay0,  "out", fullAdd,  "carry", outout); // 2
 
 	return fullAdd;
 }
@@ -159,27 +154,27 @@ static LogicBlock& createNBitAdd(Board& board, LogicBlock& parent, int n)
 		LogicBlock& tempAdd = createFullAdd(board, add);
 		tempAdd.setPos(15 + (i / (n / 4)) * 140, 15 + (i % (n / 4)) * 105);
 		tempAdd.setExpand(false);
-		board.connectToIn(add, arrayToStr("a", i), tempAdd, "a");
-		board.connectToIn(add, arrayToStr("b", i), tempAdd, "b");
+		board.connect(add, arrayToStr("a", i), tempAdd, "a", inin);
+		board.connect(add, arrayToStr("b", i), tempAdd, "b", inin);
 
 		if (i > 0)
 		{
 			board.connect(*oldAdd, "carry", tempAdd, "c");
 		}
 
-		board.connectToOut(tempAdd, "out", add, arrayToStr("out", i));
+		board.connect(tempAdd, "out", add, arrayToStr("out", i), outout);
 
 		oldAdd = &tempAdd;
 	}
 
 	if (oldAdd) // no one would make a 0bit adder
-		board.connectToOut(*oldAdd, "carry", add, "overflow");
+		board.connect(*oldAdd, "carry", add, "overflow", outout);
 
 	LogicBlock& delay = createNDelay(board, add, 2 * n);
 	delay.setPos(15 + ((n + 1) / (n / 4)) * 140, 15 + ((n + 1) % (n / 4)) * 50);
 	delay.setExpand(false);
-	board.connectToIn(add, "sigin", delay, "in");
-	board.connectToOut(delay, "out", add, "sigout");
+	board.connect(add, "sigin", delay, "in", inin);
+	board.connect(delay, "out", add, "sigout", outout);
 
 	return add;
 }
@@ -192,8 +187,8 @@ static LogicBlock& createNBitInvert(Board& board, LogicBlock& parent, int n)
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& tempNot = inv.add(LogicBlockNot);
-		board.connectToIn(inv, arrayToStr("in", i), tempNot, "in");
-		board.connectToOut(tempNot, "out", inv, arrayToStr("out", i));
+		board.connect(inv, arrayToStr("in", i), tempNot, "in", inin);
+		board.connect(tempNot, "out", inv, arrayToStr("out", i), outout);
 	}
 
 	return inv;
@@ -236,21 +231,21 @@ static LogicBlock& createNBitSub(Board& board, LogicBlock& parent, int n)
 	// ret
 	// delay1
 
-	board.connectToIn(sub, "sigin", delay0, "in");
+	board.connect(sub, "sigin", delay0, "in", inin);
 	board.connect(delay0, "out", tempAdd, "sigin");
 	board.connect(tempAdd, "sigout", add, "sigin");
 
-	board.connectToIn(sub, "b[]", inv, "in[]"); // 0
+	board.connect(sub, "b[]", inv, "in[]", inin); // 0
 	board.connect(inv, "out[]", tempAdd, "a[]"); // 1
 
-	board.connectToIn(sub, "a[]", add, "a[]"); // 0
+	board.connect(sub, "a[]", add, "a[]", inin); // 0
 	board.connect(tempAdd, "out[]", add, "b[]"); // 2
 
-	board.connectToOut(add, "out[]", sub, "out[]"); // 3
+	board.connect(add, "out[]", sub, "out[]", outout); // 3
 	board.connect(add, "overflow", ret, "in"); // 3
-	board.connectToOut(ret, "out", sub, "overflow"); // 4
+	board.connect(ret, "out", sub, "overflow", outout); // 4
 
-	board.connectToOut(add, "sigout", sub, "sigout");
+	board.connect(add, "sigout", sub, "sigout", outout);
 
 	return sub;
 }
@@ -264,8 +259,8 @@ static LogicBlock& createNBitXor(Board& board, LogicBlock& parent, int n)
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& tempXor = nxor.add(LogicBlockXor);
-		board.connectToIn(nxor, arrayToStr("in", i), tempXor, "in");
-		board.connectToOut(tempXor, "out", nxor, arrayToStr("out", i));
+		board.connect(nxor, arrayToStr("in", i), tempXor, "in", inin);
+		board.connect(tempXor, "out", nxor, arrayToStr("out", i), outout);
 	}
 
 	return nxor;
@@ -278,10 +273,10 @@ static LogicBlock& createNBitIsZero(Board& board, LogicBlock& parent, int n)
 		std::to_string(n) + "bitIsZero"));
 
 	LogicBlock& tempnot = iszero.add(LogicBlockNot);
-	board.connectToOut(tempnot, "out", iszero, "out");
+	board.connect(tempnot, "out", iszero, "out", outout);
 
 	for (int i = 0; i < n; ++i)
-		board.connectToIn(iszero, arrayToStr("in", i), tempnot, "in");
+		board.connect(iszero, arrayToStr("in", i), tempnot, "in", inin);
 	return iszero;
 }
 
@@ -300,11 +295,11 @@ static LogicBlock& createNBitCompare(Board& board, LogicBlock& parent, int n)
 	// step 1
 	// iszero
 
-	board.connectToIn(comp, "a[]", nxor, "a[]");
-	board.connectToIn(comp, "b[]", nxor, "b[]");
+	board.connect(comp, "a[]", nxor, "a[]", inin);
+	board.connect(comp, "b[]", nxor, "b[]", inin);
 
 	board.connect(nxor, "out[]", iszero, "in[]");
-	board.connectToOut(iszero, "out", comp, "out");
+	board.connect(iszero, "out", comp, "out", outout);
 
 	return comp;
 }
@@ -318,9 +313,9 @@ static LogicBlock& createNBitGate(Board& board, LogicBlock& parent, int n)
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& tempand = gate.add(LogicBlockAnd);
-		board.connectToIn(gate, arrayToStr("in", i), tempand, "a");
-		board.connectToIn(gate, "power", tempand, "b");
-		board.connectToOut(tempand, "out", gate, arrayToStr("out", i));
+		board.connect(gate, arrayToStr("in", i), tempand, "a", inin);
+		board.connect(gate, "power", tempand, "b", inin);
+		board.connect(tempand, "out", gate, arrayToStr("out", i), outout);
 	}
 
 	return gate;
@@ -337,7 +332,7 @@ static LogicBlock& createNBitShiftM(Board& board, LogicBlock& parent, int n, int
 		int index = i + m;
 		if (index >= 0 && index < n)
 		{
-			board.connectInOut(shift, arrayToStr("in", i), arrayToStr("out", index));
+			board.connect(shift, arrayToStr("in", i), shift, arrayToStr("out", index), inout);
 			//LogicBlock& delay = shift.add(LogicBlockDelay);
 			//board.connectToIn(shift, arrayToStr("in", i), delay, "in");
 			//board.connectToOut(delay, "out", shift, arrayToStr("out", index));
@@ -350,13 +345,13 @@ static LogicBlock& createNBitShiftM(Board& board, LogicBlock& parent, int n, int
 // n cycles on, n off
 static LogicBlock& createClockN(Board& board, LogicBlock& parent, int n)
 {
-	LogicBlock& clock = parent.add(LogicBlock("pause", "out", "clock"));
+	LogicBlock& clock = parent.add(LogicBlock("pause", "out", std::to_string(n) + "cycleClock"));
 
 	LogicBlock& tempnot = clock.add(LogicBlockNot);
 	tempnot.setPos(5, 5);
 	LogicBlock* ptr = &tempnot;
-	board.connectToOut(tempnot, "out", clock, "out");
-	board.connectToIn(clock, "pause", tempnot, "in");
+	board.connect(tempnot, "out", clock, "out", outout);
+	board.connect(clock, "pause", tempnot, "in", inin);
 
 	for (int i = 1; i < n; ++i)
 	{
@@ -369,6 +364,28 @@ static LogicBlock& createClockN(Board& board, LogicBlock& parent, int n)
 	board.connect(*ptr, "out", tempnot, "in");
 
 	return clock;
+}
+
+static LogicBlock& createPulse(Board& board, LogicBlock& parent)
+{
+	LogicBlock& pulse = parent.add(LogicBlock("in", "out", "pulse"));
+
+	LogicBlock& tempdelay = pulse.add(LogicBlockDelay);
+	LogicBlock& tempxor = pulse.add(LogicBlockXor);
+	LogicBlock& tempand = pulse.add(LogicBlockAnd);
+
+	tempdelay.setPos(15, 15);
+	tempxor.setPos(90, 15);
+	tempand.setPos(165, 15);
+
+	board.connect(pulse, "in", tempdelay, "in", inin);
+	board.connect(pulse, "in", tempxor, "a", inin);
+	board.connect(tempdelay, "out", tempxor, "b");
+	board.connect(tempxor, "out", tempand, "a");
+	board.connect(tempdelay, "out", tempand, "b");
+	board.connect(tempand, "out", pulse, "out", outout);
+
+	return pulse;
 }
 
 static LogicBlock& createNBitOutput(Board& board, LogicBlock& parent, int n)
@@ -432,15 +449,21 @@ int main()
 
 	Board board;
 
-	LogicBlock& clock1 = createClockN(board, board.board, 1);
-	clock1.setPos(5, 15);
-	LogicBlock& clock2 = createClockN(board, board.board, 2);
-	clock2.setPos(115, 15);
-	LogicBlock& clock3 = createClockN(board, board.board, 3);
-	clock3.setPos(225, 15);
-	LogicBlock& power = board.add(LogicBlockOn);
-	board.connect(power, "out", clock1, "pause");
+	//LogicBlock& clock1 = createClockN(board, board.board, 1);
+	//clock1.setPos(5, 15);
+	//LogicBlock& clock2 = createClockN(board, board.board, 2);
+	//clock2.setPos(115, 15);
+	//LogicBlock& clock3 = createClockN(board, board.board, 3);
+	//clock3.setPos(225, 15);
+	//LogicBlock& power = board.add(LogicBlockOn);
+	//board.connect(power, "out", clock1, "pause");
 
+	LogicBlock& clock = createClockN(board, board.board, 7);
+	clock.setPos(15, 15);
+	LogicBlock& pulse = createPulse(board, board.board);
+	pulse.setPos(125, 15);
+
+	board.connect(clock, "out", pulse, "in");
 
 	//int n = 16;
 	//LogicBlock& a = createNBitNumber(board, board.board, n, 10);

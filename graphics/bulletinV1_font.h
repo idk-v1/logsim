@@ -1,9 +1,9 @@
 #pragma once
 #include <stdint.h>
-uint32_t font_w = 11;
-uint32_t font_h = 16;
-uint32_t stride = 6;
-const uint32_t font[] = 
+static uint32_t font_w = 11;
+static uint32_t font_h = 16;
+static uint32_t stride = 6;
+static const uint32_t font[] = 
 {
     // |           |
     // |           |

@@ -5,7 +5,8 @@
 
 LogicBlock::LogicBlock(const std::string& label)
 {
-	if (label == "and" || label == "or" || label == "xor" || label == "nor" || label == "nand")
+	if (label == "and" || label == "or" || label == "xor" || label == "nor" || 
+		label == "nand" || label == "xnor")
 	{
 		input["a"] = { 0 };
 		input["b"] = { 0 };
@@ -115,6 +116,8 @@ void LogicBlock::tick(int mousex, int mousey, bool click)
 		output["out"].data = !(input["a"].data || input["b"].data);
 	else if (label == "nand")
 		output["out"].data = !(input["a"].data && input["b"].data);
+	else if (label == "xnor")
+		output["out"].data = !(input["a"].data != input["b"].data);
 	else if (label == "not")
 		output["out"].data = !input["in"].data;
 	else if (label == "delay")

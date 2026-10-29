@@ -18,7 +18,7 @@ LogicBlock::LogicBlock(const std::string& label)
 	}
 	else if (label == "on")
 		output["out"] = { 1, 0 };
-	else if (label == "off")
+	else if (label == "off" || label == "toggle")
 		output["out"] = { 0 };
 
 	this->label = label;
@@ -103,7 +103,7 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 	this->label = label;
 }
 
-void LogicBlock::tick()
+void LogicBlock::tick(int mousex, int mousey, bool click)
 {
 	if (label == "and")
 		output["out"].data = input["a"].data && input["b"].data;
@@ -115,9 +115,14 @@ void LogicBlock::tick()
 		output["out"].data = !input["in"].data;
 	else if (label == "delay")
 		output["out"].data = input["in"].data;
+	else if (label == "toggle")
+	{
+		if (mousex >= bx && mousex <= bx + w && mousey >= by && mousey <= by + h && click)
+			output["out"].data = !output["out"].data;
+	}
 	else
 		for (auto& b : blocks)
-			b.tick();
+			b.tick(mousex, mousey, click);
 }
 
 LogicBlock& LogicBlock::add(const LogicBlock& block)
@@ -309,7 +314,7 @@ void LogicBlock::resetWrittenTo()
 		o.second.written = false;
 }
 
-bool LogicBlock::isExpanded() const
+bool LogicBlock::isHidden() const
 {
-	return parExpand;
+	return !parExpand;
 }

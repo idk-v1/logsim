@@ -21,7 +21,7 @@ struct LogicSim
 
 	LogicBlock& add(const LogicBlock& block);
 
-	void tick();
+	void tick(int mousex, int mousey, bool click);
 
 	void draw(SDL_Surface* surface);
 

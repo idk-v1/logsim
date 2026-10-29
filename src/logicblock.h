@@ -74,7 +74,7 @@ struct LogicBlock
 	LogicBlock(const std::string& label);
 	LogicBlock(const std::string& in, const std::string& out, const std::string& label);
 
-	void tick();
+	void tick(int mousex, int mousey, bool click);
 
 	LogicBlock& add(const LogicBlock& block);
 
@@ -96,7 +96,7 @@ struct LogicBlock
 
 	void resetWrittenTo();
 
-	bool isExpanded() const;
+	bool isHidden() const;
 
 	std::map<std::string, WriteData, strCmpWithArray> input;
 	std::map<std::string, WriteData, strCmpWithArray> output;
@@ -109,10 +109,11 @@ private:
 	bool expand = true, parExpand = true;
 };
 
-#define LogicBlockAnd   LogicBlock("and")
-#define LogicBlockOr    LogicBlock("or")
-#define LogicBlockXor   LogicBlock("xor")
-#define LogicBlockNot   LogicBlock("not")
-#define LogicBlockDelay LogicBlock("delay")
-#define LogicBlockOn    LogicBlock("on")
-#define LogicBlockOff   LogicBlock("off")
+#define LogicBlockAnd    LogicBlock("and")
+#define LogicBlockOr     LogicBlock("or")
+#define LogicBlockXor    LogicBlock("xor")
+#define LogicBlockNot    LogicBlock("not")
+#define LogicBlockDelay  LogicBlock("delay")
+#define LogicBlockOn     LogicBlock("on")
+#define LogicBlockOff    LogicBlock("off")
+#define LogicBlockToggle LogicBlock("toggle")

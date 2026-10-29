@@ -30,7 +30,7 @@ LogicBlock& LogicSim::add(const LogicBlock& block)
 	return board.add(block);
 }
 
-void LogicSim::tick()
+void LogicSim::tick(int mousex, int mousey, bool click)
 {
 	board.resetWrittenTo();
 
@@ -40,7 +40,7 @@ void LogicSim::tick()
 	for (auto& c : connectionsIn)
 		c.tick();
 
-	board.tick();
+	board.tick(mousex, mousey, click);
 
 	for (auto& c : connectionsInOut)
 		c.tick();

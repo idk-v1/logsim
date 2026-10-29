@@ -15,7 +15,14 @@ void LogicSim::recalc()
 void LogicSim::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b,
 	const std::string& bIndex, bool aIn, bool bIn)
 {
-	connections.push_back(Connector(a, aIndex, b, bIndex, aIn, bIn));
+	if (!aIn && bIn)
+		connections.push_back(Connector(a, aIndex, b, bIndex, outin));
+	else if (aIn && bIn)
+		connectionsIn.push_back(Connector(a, aIndex, b, bIndex, inin));
+	else if (!aIn && !bIn)
+		connectionsOut.push_back(Connector(a, aIndex, b, bIndex, outout));
+	else
+		connectionsInOut.push_back(Connector(a, aIndex, b, bIndex, inout));
 }
 
 LogicBlock& LogicSim::add(const LogicBlock& block)

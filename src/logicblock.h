@@ -113,6 +113,3 @@ private:
 #define LogicBlockOr    LogicBlock("or")
 #define LogicBlockXor   LogicBlock("xor")
 #define LogicBlockNot   LogicBlock("not")
-#define LogicBlockDelay LogicBlock("delay") // actually or (with no b input) (delay.in -> or.a, delay.out -> or.out)
-#define LogicBlockOn    LogicBlock("on") // actually not (with no inpupt) (on.out -> not.out)
-#define LogicBlockOff   LogicBlock("off") // actually and,or,xor,delay (with no input) (off.out -> thing.out)

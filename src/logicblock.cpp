@@ -11,15 +11,11 @@ LogicBlock::LogicBlock(const std::string& label)
 		input["b"] = { 0 };
 		output["out"] = { 0 };
 	}
-	else if (label == "not" || label == "delay")
+	else if (label == "not")
 	{
 		input["in"] = { 0 };
 		output["out"] = { 0 };
 	}
-	else if (label == "on")
-		output["out"] = { 1, 0 };
-	else if (label == "off")
-		output["out"] = { 0 };
 
 	this->label = label;
 }
@@ -113,12 +109,12 @@ void LogicBlock::tick()
 		output["out"].data = input["a"].data != input["b"].data;
 	else if (label == "not")
 		output["out"].data = !input["in"].data;
-	else if (label == "on")
-		output["out"].data = 1;
-	else if (label == "off")
-		output["out"].data = 0;
-	else if (label == "delay")
-		output["out"].data = input["in"].data;
+	//else if (label == "on")
+	//	output["out"].data = 1;
+	//else if (label == "off")
+	//	output["out"].data = 0;
+	//else if (label == "delay")
+	//	output["out"].data = input["in"].data;
 	else
 		for (auto& b : blocks)
 			b.tick();

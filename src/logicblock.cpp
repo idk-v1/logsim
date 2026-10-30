@@ -19,7 +19,7 @@ LogicBlock::LogicBlock(const std::string& label)
 	}
 	else if (label == "on")
 		output["out"] = { 1, 0 };
-	else if (label == "off" || label == "toggle")
+	else if (label == "off" || label == "toggle" || label == "button")
 		output["out"] = { 0 };
 
 	this->label = label;
@@ -124,8 +124,17 @@ void LogicBlock::tick(int mousex, int mousey, bool click)
 		output["out"].data = input["in"].data;
 	else if (label == "toggle")
 	{
-		if (mousex >= bx && mousex <= bx + w && mousey >= by + font_h / 2 && mousey <= by + h && click)
+		if (mousex >= bx && mousex <= bx + w && mousey >= by + font_h / 2 && 
+			mousey <= by + h && click)
 			output["out"].data = !output["out"].data;
+	}
+	else if (label == "button")
+	{
+		if (mousex >= bx && mousex <= bx + w && mousey >= by + font_h / 2 && 
+			mousey <= by + h && click && output["out"].data == false)
+			output["out"].data = true;
+		else
+			output["out"].data = false;
 	}
 	else
 		for (auto& b : blocks)
@@ -199,7 +208,7 @@ void LogicBlock::recalc(int px, int py)
 			outLen = out->first.size();
 			out = std::next(out);
 		}
-		maxLabel = std::max(maxLabel, 1 + inLen + outLen);
+		maxLabel = std::max(maxLabel, 2 + inLen + outLen);
 	}
 	// fit name or at least 1 if blank
 	w = hfont_w * (int)std::max(maxLabel, label.size());

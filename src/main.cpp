@@ -6,69 +6,38 @@
 int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
-	SDL_Window* window = SDL_CreateWindow("logsim", 1200, 600, 0);
+	int width = 1200, height = 600;
+	SDL_Window* window = SDL_CreateWindow("logsim", width, height, SDL_WINDOW_RESIZABLE);
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	setPixelFormat(surface);
 
-	int stepTime = 50;
+	int stepTime = 5;
 
 	LogicSim sim;
 
-	//LogicBlock& clock1 = createClockN(sim, sim.getBoard(), 1);
-	//clock1.setPos(75, 5);
-	//LogicBlock& power = sim.add(LogicBlockToggle);
-	//power.setPos(5, 5);
-	//sim.connect(power, "out", clock1, "pause");
+	int n = 16;
 
-	LogicBlock& input00 = createNBitNumber(sim, sim.getBoard(), 8, 127);
-	LogicBlock& input01 = sim.add(LogicBlockToggle);
-	LogicBlock& input02 = createNBitGate(sim, sim.getBoard(), 8);
-	sim.connect(input00, "out[]", input02, "in[]");
-	sim.connect(input01, "out", input02, "write");
-	input00.setPos(15, 15);
-	input01.setPos(15, 75);
-	input02.setPos(100, 15);
-	input02.setExpand(false);
+	LogicBlock& add = createNBitAdd1(sim, sim.getBoard(), n);
+	add.setPos(100, 250);
+	add.setExpand(false);
 
-	LogicBlock& input10 = createNBitNumber(sim, sim.getBoard(), 8, 34);
-	LogicBlock& input11 = sim.add(LogicBlockToggle);
-	LogicBlock& input12 = createNBitGate(sim, sim.getBoard(), 8);
-	sim.connect(input10, "out[]", input12, "in[]");
-	sim.connect(input11, "out", input12, "write");
-	input10.setPos(15, 115);
-	input11.setPos(15, 175);
-	input12.setPos(100, 115);
-	input12.setExpand(false);
+	LogicBlock& mem = createNBitMemory(sim, sim.getBoard(), n);
+	mem.setPos(100, 15);
+	mem.setExpand(false);
 
-	LogicBlock& input20 = createNBitNumber(sim, sim.getBoard(), 8, 213);
-	LogicBlock& input21 = sim.add(LogicBlockToggle);
-	LogicBlock& input22 = createNBitGate(sim, sim.getBoard(), 8);
-	sim.connect(input20, "out[]", input22, "in[]");
-	sim.connect(input21, "out", input22, "write");
-	input20.setPos(15, 215);
-	input21.setPos(15, 275);
-	input22.setPos(100, 215);
-	input22.setExpand(false);
+	LogicBlock& button = sim.add(LogicBlockButton);
+	button.setPos(15, 15);
+	LogicBlock& toggle = sim.add(LogicBlockToggle);
+	toggle.setPos(15, 50);
 
-	LogicBlock& mem = createNBitMemory(sim, sim.getBoard(), 8);
-	mem.setPos(250, 15);
-	sim.connect(input02, "out[]", mem, "data[]");
-	sim.connect(input01, "out", mem, "write");
-	sim.connect(input12, "out[]", mem, "data[]");
-	sim.connect(input11, "out", mem, "write");
-	sim.connect(input22, "out[]", mem, "data[]");
-	sim.connect(input21, "out", mem, "write");
+	sim.connect(mem, "out[]", add, "a[]");
+	sim.connect(add, "out[]", mem, "data[]");
+	sim.connect(add, "sigout", mem, "write");
 
-	LogicBlock& out = createNBitOutput(sim, sim.getBoard(), 8);
-	out.setPos(400, 15);
-	sim.connect(mem, "out[]", out, "in[]");
+	sim.connect(mem, "sigout", add, "sigin");
+	sim.connect(button, "out", add, "sigin");
+	sim.connect(toggle, "out", mem, "read");
 
-
-	//LogicBlock& clock = createClockN(sim, sim.getBoard(), 7);
-	//clock.setPos(15, 15);
-	//LogicBlock& pulse = createPulse(sim, sim.getBoard());
-	//pulse.setPos(125, 15);
-	//sim.connect(clock, "out", pulse, "in");
 
 	//int n = 32;
 	//LogicBlock& a = createNBitNumber(sim, sim.getBoard(), n, 54321);
@@ -125,16 +94,22 @@ int main()
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 				click = true;
 				break;
+
+			case SDL_EVENT_WINDOW_RESIZED:
+				width = event.window.data1;
+				height = event.window.data2;
+				surface = SDL_GetWindowSurface(window);
+				break;
 			}
 		}
 		clearScreen(surface, rgb(0, 0, 0));
 
 		sim.draw(surface);
 
-		drawNumberLabel(surface, input00, 8, false);
-		drawNumberLabel(surface, input10, 8, false);
-		drawNumberLabel(surface, input20, 8, false);
-		drawNumberLabel(surface, out, 8, true);
+		//drawNumberLabel(surface, input00, 8, false);
+		//drawNumberLabel(surface, input10, 8, false);
+		//drawNumberLabel(surface, input20, 8, false);
+		drawNumberLabel(surface, mem, n);
 		//drawNumberLabel(surface, a, n, false);
 		//drawNumberLabel(surface, b, n, false);
 		//drawNumberLabel(surface, out, n, true);
@@ -148,9 +123,9 @@ int main()
 			sim.tick(mousex, mousey, click);
 			++ticks;
 		}
-		//if (sub.output["sigout"])
+		//if (mem.output["sigout"].data)
 		//	pause = true;
-		SDL_Delay(stepTime);
+		//SDL_Delay(stepTime);
 	}
 	SDL_DestroyWindow(window);
 

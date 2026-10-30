@@ -55,7 +55,7 @@ static LogicBlock& createNBitAdd1(LogicSim& sim, LogicBlock& parent, int n)
 		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitAdd1"));
 
 	LogicBlock* oldAdd = NULL;
-	LogicBlock& one = parent.add(LogicBlockOn);
+	LogicBlock& one = add.add(LogicBlockOn);
 
 	for (int i = 0; i < n; ++i)
 	{
@@ -347,10 +347,10 @@ static LogicBlock& createClockN(LogicSim& sim, LogicBlock& parent, int n)
 	return clock;
 }
 
-// 2 cycles
-static LogicBlock& createPulse(LogicSim& sim, LogicBlock& parent)
+// 2 cycles, n cycles on
+static LogicBlock& createNPulse(LogicSim& sim, LogicBlock& parent, int n)
 {
-	LogicBlock& pulse = parent.add(LogicBlock("in", "out", "pulse"));
+	LogicBlock& pulse = parent.add(LogicBlock("in", "out", std::to_string(n) + "pulse"));
 
 	LogicBlock& tempdelay = pulse.add(LogicBlockDelay);
 	LogicBlock& tempxor = pulse.add(LogicBlockXor);
@@ -366,6 +366,20 @@ static LogicBlock& createPulse(LogicSim& sim, LogicBlock& parent)
 	sim.connect(tempxor, "out", tempand, "a");
 	sim.connect(tempdelay, "out", tempand, "b");
 	sim.connect(tempand, "out", pulse, "out", outout);
+
+	LogicBlock* ptr = NULL;
+	for (int i = 0; i < n - 1; ++i)
+	{
+		LogicBlock& temp = pulse.add(LogicBlockDelay);
+
+		if (ptr)
+			sim.connect(*ptr, "out", temp, "in");
+		else
+			sim.connect(tempand, "out", temp, "in");
+		sim.connect(temp, "out", pulse, "out", outout);
+
+		ptr = &temp;
+	}
 
 	return pulse;
 }
@@ -388,27 +402,47 @@ static LogicBlock& createMemoryCell(LogicSim& sim, LogicBlock& parent)
 	sim.connect(pass, "out", gate, "in[1]");
 	sim.connect(mem, "write", gate, "write", inin);
 
+	LogicBlock& stab = mem.add(LogicBlockAnd);
+	stab.setPos(175, 15);
+
+	LogicBlock& delay0 = mem.add(LogicBlockDelay);
+	delay0.setPos(175, 50);
+	LogicBlock& delay1 = mem.add(LogicBlockDelay);
+	delay1.setPos(175, 75);
+
 	LogicBlock& tempnot0 = mem.add(LogicBlockNot);
 	LogicBlock& tempnot1 = mem.add(LogicBlockNot);
-	tempnot0.setPos(200, 15);
-	tempnot1.setPos(200, 50);
+	tempnot0.setPos(250, 15);
+	tempnot1.setPos(250, 50);
 
 	sim.connect(gate, "out[0]", tempnot0, "in");
 	sim.connect(gate, "out[1]", tempnot1, "in");
 
+	sim.connect(gate, "out[0]", delay0, "in");
+	sim.connect(gate, "out[1]", delay1, "in");
+	sim.connect(delay0, "out", tempnot0, "in");
+	sim.connect(delay1, "out", tempnot1, "in");
+
 	sim.connect(tempnot0, "out", tempnot1, "in");
 	sim.connect(tempnot1, "out", tempnot0, "in");
+
+	sim.connect(tempnot0, "out", stab, "a");
+	sim.connect(tempnot1, "out", stab, "b");
+	sim.connect(stab, "out", tempnot0, "in");
 
 	sim.connect(tempnot0, "out", mem, "out", outout);
 
 	return mem;
 }
 
-// 4 cycle write
+// 5 cycle write
 static LogicBlock& createNBitMemory(LogicSim& sim, LogicBlock& parent, int n)
 {
-	LogicBlock& mem = parent.add(LogicBlock(arrayToStr("data", n) + "|write", 
-		arrayToStr("out", n), std::to_string(n) + "bitMemory"));
+	LogicBlock& mem = parent.add(LogicBlock(arrayToStr("data", n) + "|write|read", 
+		arrayToStr("out", n) + "|sigout", std::to_string(n) + "bitMemory"));
+
+	LogicBlock& gate = createNBitGate(sim, mem, n);
+	sim.connect(mem, "read", gate, "write", inin);
 
 	for (int i = 0; i < n; ++i)
 	{
@@ -417,8 +451,15 @@ static LogicBlock& createNBitMemory(LogicSim& sim, LogicBlock& parent, int n)
 		temp.setPos(15, 15 + i * 50);
 		sim.connect(mem, arrayToStr("data", i), temp, "data", inin);
 		sim.connect(mem, "write", temp, "write", inin);
-		sim.connect(temp, "out", mem, arrayToStr("out", i), outout);
+		sim.connect(temp, "out", gate, arrayToStr("in", i));
 	}
+
+	sim.connect(gate, "out[]", mem, "out[]", outout);
+	gate.setPos(200, 15);
+
+	LogicBlock& delay = createNDelay(sim, mem, 5);
+	sim.connect(mem, "write", delay, "in", inin);
+	sim.connect(delay, "out", mem, "sigout", outout);
 
 	return mem;
 }
@@ -478,13 +519,13 @@ static int64_t readNBitInput(const LogicBlock& block, int n)
 	return num;
 }
 
-static void drawNumberLabel(SDL_Surface* surface, LogicBlock& block, int n, bool isOutput)
+static void drawNumberLabel(SDL_Surface* surface, LogicBlock& block, int n)
 {
 	XYCoord coord = block.getConnectionPos(0, false);
 	int64_t value = 0;
-	if (isOutput)
-		value = readNBitOutput(block, n);
-	else
+	if (block.output.size())
 		value = readNBitInput(block, n);
+	else
+		value = readNBitOutput(block, n);
 	drawTextFA(surface, coord.x - font_w / 2, coord.y - font_h * 3 / 2, 1, -1, 0, rgb(255, 255, 255), "%lld", value);
 }

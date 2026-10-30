@@ -120,3 +120,4 @@ private:
 #define LogicBlockOn     LogicBlock("on")
 #define LogicBlockOff    LogicBlock("off")
 #define LogicBlockToggle LogicBlock("toggle")
+#define LogicBlockButton LogicBlock("button")

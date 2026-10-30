@@ -292,14 +292,15 @@ static LogicBlock& createNBitCompare(LogicSim& sim, LogicBlock& parent, int n)
 // 1 cycle
 static LogicBlock& createNBitGate(LogicSim& sim, LogicBlock& parent, int n)
 {
-	LogicBlock& gate = parent.add(LogicBlock(arrayToStr("in", n) + "|power",
+	LogicBlock& gate = parent.add(LogicBlock(arrayToStr("in", n) + "|write",
 		arrayToStr("out", n), std::to_string(n) + "bitGate"));
 
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& tempand = gate.add(LogicBlockAnd);
+		tempand.setPos(5, i * 30 + 5);
 		sim.connect(gate, arrayToStr("in", i), tempand, "a", inin);
-		sim.connect(gate, "power", tempand, "b", inin);
+		sim.connect(gate, "write", tempand, "b", inin);
 		sim.connect(tempand, "out", gate, arrayToStr("out", i), outout);
 	}
 
@@ -369,6 +370,58 @@ static LogicBlock& createPulse(LogicSim& sim, LogicBlock& parent)
 	return pulse;
 }
 
+// 4 cycle write
+static LogicBlock& createMemoryCell(LogicSim& sim, LogicBlock& parent)
+{
+	LogicBlock& mem = parent.add(LogicBlock("data|write", "out", "memoryCell"));
+
+	LogicBlock& inv = mem.add(LogicBlockNot);
+	LogicBlock& pass = mem.add(LogicBlockDelay);
+	inv.setPos(15, 15);
+	pass.setPos(15, 50);
+	sim.connect(mem, "data", inv, "in", inin);
+	sim.connect(mem, "data", pass, "in", inin);
+
+	LogicBlock& gate = createNBitGate(sim, mem, 2);
+	gate.setPos(80, 15);
+	sim.connect(inv, "out", gate, "in[0]");
+	sim.connect(pass, "out", gate, "in[1]");
+	sim.connect(mem, "write", gate, "write", inin);
+
+	LogicBlock& tempnot0 = mem.add(LogicBlockNot);
+	LogicBlock& tempnot1 = mem.add(LogicBlockNot);
+	tempnot0.setPos(200, 15);
+	tempnot1.setPos(200, 50);
+
+	sim.connect(gate, "out[0]", tempnot0, "in");
+	sim.connect(gate, "out[1]", tempnot1, "in");
+
+	sim.connect(tempnot0, "out", tempnot1, "in");
+	sim.connect(tempnot1, "out", tempnot0, "in");
+
+	sim.connect(tempnot0, "out", mem, "out", outout);
+
+	return mem;
+}
+
+// 4 cycle write
+static LogicBlock& createNBitMemory(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& mem = parent.add(LogicBlock(arrayToStr("data", n) + "|write", 
+		arrayToStr("out", n), std::to_string(n) + "bitMemory"));
+
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& temp = createMemoryCell(sim, mem);
+		temp.setExpand(false);
+		temp.setPos(15, 15 + i * 50);
+		sim.connect(mem, arrayToStr("data", i), temp, "data", inin);
+		sim.connect(mem, "write", temp, "write", inin);
+		sim.connect(temp, "out", mem, arrayToStr("out", i), outout);
+	}
+
+	return mem;
+}
 
 static LogicBlock& createNBitNumber(LogicSim& sim, LogicBlock& parent, int n, int64_t input)
 {

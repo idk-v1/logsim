@@ -209,10 +209,10 @@ void LogicBlock::recalc(int px, int py)
 				w = std::max(w, b.x + b.w);
 
 	// 2*font_h for input/output on sides
-	w += 2 * font_h;
+	w += 2 * font_w;
 
 	// fit max of input or output length or at least 1
-	h = hfont_h * (int)std::max(1ull, std::max(input.size(), output.size()));
+	h = (hfont_h - hfont_w) + hfont_h * (int)std::max(1ull, std::max(input.size(), output.size()));
 	if (expand)
 		for (auto& b : blocks)
 			if (b.h)
@@ -230,10 +230,13 @@ void LogicBlock::draw(SDL_Surface* surface)
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
 
-	drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
+	if (label == "on" || (label == "toggle" && output["out"].data))
+		drawRect(surface, bx, by, w, h, rgb(63, 63, 63)); // bg
+	else
+		drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
 	drawRect(surface, bx, by, w, hfont_h, rgb(15, 15, 15)); // titlebar
-	drawRect(surface, bx, by + hfont_h, hfont_h, h - hfont_h, rgb(63, 15, 15)); // inputs
-	drawRect(surface, bx + w - hfont_h, by + hfont_h, hfont_h, h - hfont_h, rgb(15, 15, 63)); // outputs
+	drawRect(surface, bx, by + hfont_h, hfont_w, h - hfont_h, rgb(63, 15, 15)); // inputs
+	drawRect(surface, bx + w - hfont_w, by + hfont_h, hfont_w, h - hfont_h, rgb(15, 15, 63)); // outputs
 	drawText(surface, bx + hfont_w, by, 0, rgb(255, 255, 255), label.data()); // title
 
 	int index = 0;
@@ -273,15 +276,12 @@ XYCoord LogicBlock::getConnectionPos(int index, bool isInput)
 	int hfont_w = font_w / 2;
 	int hfont_h = font_h / 2;
 
-	int y = by + hfont_h + index * hfont_h;
+	int y = by + hfont_h + (hfont_h - hfont_w) + index * hfont_h;
 	int x = bx;
 	if (!isInput)
-		x += w - hfont_h;
+		x += w - hfont_w;
 
-	if (x < 0)
-		printf("bad\n");
-
-	return XYCoord(x + hfont_h / 2, y + hfont_h / 2);
+	return XYCoord(x + hfont_w / 2, y + hfont_w / 2);
 }
 
 int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
@@ -305,7 +305,7 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 			++index;
 		}
 	}
-	printf("%s.%c[%s] doesn't exist", label.data(), isInput ? 'i' : 'o', name.data());
+	printf("%s.%c[%s] doesn't exist\n", label.data(), isInput ? 'i' : 'o', name.data());
 	return -1;
 }
 

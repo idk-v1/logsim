@@ -11,34 +11,64 @@ int main()
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	setPixelFormat(surface);
 
-	int stepTime = 5;
+	int stepTime = 100;
 
 	LogicSim sim;
 
-	int n = 16;
+	LogicBlock& mem = createMemoryAddr(sim, sim.getBoard(), 8, 8, 2);
+	mem.setPos(150, 15);
 
-	LogicBlock& add = createNBitAdd1(sim, sim.getBoard(), n);
-	add.setPos(100, 250);
-	add.setExpand(false);
+	LogicBlock& addr = createNBitNumber(sim, sim.getBoard(), 8, 1);
+	addr.setPos(15, 15);
+	LogicBlock& data = createNBitNumber(sim, sim.getBoard(), 8, 127);
+	data.setPos(15, 75);
+	LogicBlock& button = sim.add(LogicBlockToggle);
+	button.setPos(15, 150);
+	LogicBlock& addrgate = createNBitGate(sim, sim.getBoard(), 8);
+	addrgate.setPos(50, 15);
+	addrgate.setExpand(false);
+	LogicBlock& datagate = createNBitGate(sim, sim.getBoard(), 8);
+	datagate.setPos(50, 75);
+	datagate.setExpand(false);
+	LogicBlock& read = sim.add(LogicBlockToggle);
+	read.setPos(15, 175);
+	LogicBlock& write = sim.add(LogicBlockToggle);
+	write.setPos(15, 200);
 
-	LogicBlock& mem = createNBitMemory(sim, sim.getBoard(), n);
-	mem.setPos(100, 15);
-	mem.setExpand(false);
+	sim.connect(addr, "out[]", addrgate, "in[]");
+	sim.connect(data, "out[]", datagate, "in[]");
+	sim.connect(button, "out", addrgate, "write");
+	sim.connect(button, "out", datagate, "write");
+	sim.connect(addrgate, "out[]", mem, "addr[]");
+	sim.connect(datagate, "out[]", mem, "data[]");
+	sim.connect(write, "out", mem, "write");
+	sim.connect(read, "out", mem, "read");
 
-	LogicBlock& button = sim.add(LogicBlockButton);
-	button.setPos(15, 15);
-	LogicBlock& toggle = sim.add(LogicBlockToggle);
-	toggle.setPos(15, 50);
+	// Add 1 loop
+	//int n = 16;
+	//LogicBlock& add = createNBitAdd1(sim, sim.getBoard(), n);
+	//add.setPos(100, 250);
+	//add.setExpand(false);
+	//
+	//LogicBlock& mem = createNBitMemory(sim, sim.getBoard(), n);
+	//mem.setPos(100, 15);
+	//mem.setExpand(false);
+	//
+	//LogicBlock& button = sim.add(LogicBlockButton);
+	//button.setPos(15, 15);
+	//LogicBlock& toggle = sim.add(LogicBlockToggle);
+	//toggle.setPos(15, 50);
+	//
+	//sim.connect(mem, "out[]", add, "a[]");
+	//sim.connect(add, "out[]", mem, "data[]");
+	//sim.connect(add, "sigout", mem, "write");
+	//
+	//sim.connect(mem, "sigout", add, "sigin");
+	//sim.connect(button, "out", add, "sigin");
+	//sim.connect(toggle, "out", mem, "read");
 
-	sim.connect(mem, "out[]", add, "a[]");
-	sim.connect(add, "out[]", mem, "data[]");
-	sim.connect(add, "sigout", mem, "write");
 
-	sim.connect(mem, "sigout", add, "sigin");
-	sim.connect(button, "out", add, "sigin");
-	sim.connect(toggle, "out", mem, "read");
-
-
+	// Subtract
 	//int n = 32;
 	//LogicBlock& a = createNBitNumber(sim, sim.getBoard(), n, 54321);
 	//LogicBlock& b = createNBitNumber(sim, sim.getBoard(), n, 12345);
@@ -106,13 +136,12 @@ int main()
 
 		sim.draw(surface);
 
-		//drawNumberLabel(surface, input00, 8, false);
-		//drawNumberLabel(surface, input10, 8, false);
-		//drawNumberLabel(surface, input20, 8, false);
-		drawNumberLabel(surface, mem, n);
-		//drawNumberLabel(surface, a, n, false);
-		//drawNumberLabel(surface, b, n, false);
-		//drawNumberLabel(surface, out, n, true);
+		// Add 1 loop
+		//drawNumberLabel(surface, mem, n);
+		// Subtract
+		//drawNumberLabel(surface, a, n);
+		//drawNumberLabel(surface, b, n);
+		//drawNumberLabel(surface, out, n);
 		
 		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %d", ticks);
 
@@ -125,7 +154,7 @@ int main()
 		}
 		//if (mem.output["sigout"].data)
 		//	pause = true;
-		//SDL_Delay(stepTime);
+		SDL_Delay(stepTime);
 	}
 	SDL_DestroyWindow(window);
 

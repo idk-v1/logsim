@@ -199,10 +199,25 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				dy = y1 - y0;
 			}
 			float slope = dy / (float)dx;
-			for (Sint32 x = x0; x <= x1; ++x)
+			x1 = min(x1, surface->w);
+			x0 = max(x0, 0);
+			float end = roundf(slope * x1 + y0);
+			float start = roundf(slope * x0 + y0);
+			if (end >= 0 && end < surface->h && start >= 0 && start < surface->h)
 			{
-				float y = roundf(slope * (x - x0) + y0);
-				setPixel(surface, x, y, color);
+				for (Sint32 x = x0; x <= x1; ++x)
+				{
+					float y = roundf(slope * (x - x0) + y0);
+					setPixelUC(surface, x, y, color);
+				}
+			}
+			else
+			{
+				for (Sint32 x = x0; x <= x1; ++x)
+				{
+					float y = roundf(slope * (x - x0) + y0);
+					setPixel(surface, x, y, color);
+				}
 			}
 		}
 		else // use y as loop var
@@ -219,10 +234,25 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				dy = y1 - y0;
 			}
 			float slope = dx / (float)dy;
-			for (Sint32 y = y0; y <= y1; ++y)
+			y1 = min(y1, surface->h);
+			y0 = max(y0, 0);
+			float end = roundf(slope * y1 + x0);
+			float start = roundf(slope * y0 + x0);
+			if (end >= 0 && end < surface->h && start >= 0 && start < surface->h)
 			{
-				float x = roundf(slope * (y - y0) + x0);
-				setPixel(surface, x, y, color);
+				for (Sint32 y = y0; y <= y1; ++y)
+				{
+					float x = roundf(slope * (y - y0) + x0);
+					setPixelUC(surface, x, y, color);
+				}
+			}
+			else
+			{
+				for (Sint32 y = y0; y <= y1; ++y)
+				{
+					float x = roundf(slope * (y - y0) + x0);
+					setPixel(surface, x, y, color);
+				}
 			}
 		}
 	}

@@ -603,6 +603,120 @@ static LogicBlock& createMemoryAddr(LogicSim& sim, LogicBlock& parent, int addrB
 	return addr;
 }
 
+
+// in: one, five, ten, addsub, action
+// out: out[]
+static LogicBlock& createNBitNumberEditor(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& edit = parent.add(LogicBlock("one|five|ten|addsub|action", arrayToStr("out", n), 
+		std::to_string(n) + "bitNumEdit"));
+
+	LogicBlock& mem = createNBitMemory(sim, edit, n);
+	LogicBlock& on = edit.add(LogicBlockOn);
+
+	LogicBlock& add = createNBitAdd(sim, edit, n);
+	LogicBlock& sub = createNBitSub(sim, edit, n);
+
+	LogicBlock& one = createNBitNumber(sim, edit, n, 1);
+	LogicBlock& onegate = createNBitGate(sim, edit, n);
+
+	LogicBlock& fiv = createNBitNumber(sim, edit, n, 5);
+	LogicBlock& fivgate = createNBitGate(sim, edit, n);
+
+	LogicBlock& ten = createNBitNumber(sim, edit, n, 10);
+	LogicBlock& tengate = createNBitGate(sim, edit, n);
+
+	LogicBlock& addsubinv = edit.add(LogicBlockNot);
+	LogicBlock& addgate = createNBitGate(sim, edit, n);
+	LogicBlock& subgate = createNBitGate(sim, edit, n);
+
+	one.setPos(15, 15);
+	onegate.setPos(100, 15);
+	onegate.setExpand(false);
+	sim.connect(one, "out[]", onegate, "in[]");
+	sim.connect(edit, "one", onegate, "write", inin);
+	sim.connect(onegate, "out[]", add, "b[]");
+	sim.connect(onegate, "out[]", sub, "b[]");
+
+	fiv.setPos(15, 125);
+	fivgate.setPos(100, 125);
+	fivgate.setExpand(false);
+	sim.connect(fiv, "out[]", fivgate, "in[]");
+	sim.connect(edit, "five", fivgate, "write", inin);
+	sim.connect(fivgate, "out[]", add, "b[]");
+	sim.connect(fivgate, "out[]", sub, "b[]");
+
+	ten.setPos(15, 235);
+	tengate.setPos(100, 235);
+	tengate.setExpand(false);
+	sim.connect(ten, "out[]", tengate, "in[]");
+	sim.connect(edit, "ten", tengate, "write", inin);
+	sim.connect(tengate, "out[]", add, "b[]");
+	sim.connect(tengate, "out[]", sub, "b[]");
+
+	sim.connect(edit, "action", mem, "write", inin);
+
+	addsubinv.setPos(75, 350);
+	addgate.setPos(250, 100);
+	addgate.setExpand(false);
+	subgate.setPos(250, 200);
+	subgate.setExpand(false);
+	sim.connect(edit, "addsub", addsubinv, "in", inin);
+	sim.connect(edit, "addsub", addgate, "write", inin);
+	sim.connect(addsubinv, "out", subgate, "write");
+	sim.connect(addgate, "out[]", mem, "data[]");
+	sim.connect(subgate, "out[]", mem, "data[]");
+
+	mem.setPos(350, 15);
+	mem.setExpand(false);
+	on.setPos(300, 15);
+	sim.connect(on, "out", mem, "read");
+
+	add.setPos(500, 15);
+	add.setExpand(false);
+	sub.setPos(500, 200);
+	sub.setExpand(false);
+
+	sim.connect(mem, "out[]", edit, "out[]", outout);
+
+	sim.connect(mem, "out[]", add, "a[]");
+	sim.connect(add, "out[]", addgate, "in[]");
+	sim.connect(mem, "out[]", sub, "a[]");
+	sim.connect(sub, "out[]", subgate, "in[]");
+
+	return edit;
+}
+
+// out: out[]
+static LogicBlock& createNBitNumberEditorCtrl(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& ctrl = parent.add(LogicBlock("", arrayToStr("out", n), 
+		std::to_string(n) + "bitNumEditCtrl"));
+
+	LogicBlock& edit = createNBitNumberEditor(sim, ctrl, 8);
+	edit.setExpand(false);
+	edit.setPos(75, 15);
+	LogicBlock& one = ctrl.add(LogicBlockToggle);
+	LogicBlock& five = ctrl.add(LogicBlockToggle);
+	LogicBlock& ten = ctrl.add(LogicBlockToggle);
+	LogicBlock& addsub = ctrl.add(LogicBlockToggle);
+	LogicBlock& action = ctrl.add(LogicBlockButton);
+	sim.connect(one, "out", edit, "one");
+	sim.connect(five, "out", edit, "five");
+	sim.connect(ten, "out", edit, "ten");
+	sim.connect(addsub, "out", edit, "addsub");
+	sim.connect(action, "out", edit, "action");
+	one.setPos(15, 15);
+	five.setPos(15, 50);
+	ten.setPos(15, 95);
+	addsub.setPos(15, 140);
+	action.setPos(15, 185);
+
+	sim.connect(edit, "out[]", ctrl, "out[]", outout);
+
+	return ctrl;
+}
+
 static int64_t readNBitOutput(const LogicBlock& block, int n)
 {
 	int64_t num = 0;

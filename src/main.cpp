@@ -11,36 +11,26 @@ int main()
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	setPixelFormat(surface);
 
-	int stepTime = 100;
+	int stepTime = 0;
 
 	LogicSim sim;
 
-	LogicBlock& mem = createMemoryAddr(sim, sim.getBoard(), 8, 8, 2);
-	mem.setPos(150, 15);
+	LogicBlock& editaddr = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
+	editaddr.setPos(15, 15);
+	LogicBlock& editdata = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
+	editdata.setPos(15, 250);
 
-	LogicBlock& addr = createNBitNumber(sim, sim.getBoard(), 8, 1);
-	addr.setPos(15, 15);
-	LogicBlock& data = createNBitNumber(sim, sim.getBoard(), 8, 127);
-	data.setPos(15, 75);
-	LogicBlock& button = sim.add(LogicBlockToggle);
-	button.setPos(15, 150);
-	LogicBlock& addrgate = createNBitGate(sim, sim.getBoard(), 8);
-	addrgate.setPos(50, 15);
-	addrgate.setExpand(false);
-	LogicBlock& datagate = createNBitGate(sim, sim.getBoard(), 8);
-	datagate.setPos(50, 75);
-	datagate.setExpand(false);
+	LogicBlock& mem = createMemoryAddr(sim, sim.getBoard(), 8, 8, 8);
+	mem.setPos(300, 15);
+	
+	
 	LogicBlock& read = sim.add(LogicBlockToggle);
-	read.setPos(15, 175);
+	read.setPos(15, 500);
 	LogicBlock& write = sim.add(LogicBlockToggle);
-	write.setPos(15, 200);
+	write.setPos(15, 525);
 
-	sim.connect(addr, "out[]", addrgate, "in[]");
-	sim.connect(data, "out[]", datagate, "in[]");
-	sim.connect(button, "out", addrgate, "write");
-	sim.connect(button, "out", datagate, "write");
-	sim.connect(addrgate, "out[]", mem, "addr[]");
-	sim.connect(datagate, "out[]", mem, "data[]");
+	sim.connect(editaddr, "out[]", mem, "addr[]");
+	sim.connect(editdata, "out[]", mem, "data[]");
 	sim.connect(write, "out", mem, "write");
 	sim.connect(read, "out", mem, "read");
 
@@ -135,6 +125,10 @@ int main()
 		clearScreen(surface, rgb(0, 0, 0));
 
 		sim.draw(surface);
+
+		drawNumberLabel(surface, editaddr, 8);
+		drawNumberLabel(surface, editdata, 8);
+		drawNumberLabel(surface, mem, 8);
 
 		// Add 1 loop
 		//drawNumberLabel(surface, mem, n);

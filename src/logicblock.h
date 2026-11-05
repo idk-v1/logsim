@@ -109,15 +109,35 @@ private:
 	bool expand = true, parExpand = true;
 };
 
+// in: a, b
+// out: out
 #define LogicBlockAnd    LogicBlock("and")
+// in: a, b
+// out: out
 #define LogicBlockOr     LogicBlock("or")
+// in: a, b
+// out: out
 #define LogicBlockNor    LogicBlock("nor")
+// in: a, b
+// out: out
 #define LogicBlockNand   LogicBlock("nand")
+// in: a, b
+// out: out
 #define LogicBlockXnor   LogicBlock("xnor")
+// in: a, b
+// out: out
 #define LogicBlockXor    LogicBlock("xor")
+// in: in
+// out: out
 #define LogicBlockNot    LogicBlock("not")
+// in: in
+// out: out
 #define LogicBlockDelay  LogicBlock("delay")
+// out: out
 #define LogicBlockOn     LogicBlock("on")
+// out: out
 #define LogicBlockOff    LogicBlock("off")
+// out: out
 #define LogicBlockToggle LogicBlock("toggle")
+// out: out
 #define LogicBlockButton LogicBlock("button")

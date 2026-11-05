@@ -217,12 +217,13 @@ static LogicBlock& createNBitAdd(LogicSim& sim, LogicBlock& parent, int n)
 	return add;
 }
 
+
 // 1 cycle
 // in: in[]
 // out: out[]
 static LogicBlock& createNBitInvert(LogicSim& sim, LogicBlock& parent, int n)
 {
-	LogicBlock& inv = parent.add(LogicBlock(arrayToStr("in", n), 
+	LogicBlock& inv = parent.add(LogicBlock(arrayToStr("in", n),
 		arrayToStr("out", n), std::to_string(n) + "bitInvert"));
 
 	for (int i = 0; i < n; ++i)
@@ -235,6 +236,50 @@ static LogicBlock& createNBitInvert(LogicSim& sim, LogicBlock& parent, int n)
 	return inv;
 }
 
+
+// 2n cycles
+// in: a[], sigin
+// out: out[], sigout
+static LogicBlock& createNBitSub1(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& sub = parent.add(LogicBlock(arrayToStr("a", n) + "|sigin", 
+		arrayToStr("out", n) + "|sigout", std::to_string(n) + "bitSub1"));
+
+	LogicBlock& add = createNBitAdd(sim, sub, n);
+	LogicBlock& num = createNBitInvert(sim, sub, n);
+
+	sim.connect(sub, "a[]", add, "a[]", inin);
+	sim.connect(sub, "sigin", add, "sigin", inin);
+	sim.connect(num, "out[]", add, "b[]");
+	sim.connect(add, "out[]", sub, "out[]", outout);
+	sim.connect(add, "sigout", sub, "sigout", outout);
+
+	return sub;
+}
+
+
+// n + 1 cycles
+// in: in[], sigin
+// out: out[], sigout
+static LogicBlock& createNBitNegate(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& neg = parent.add(LogicBlock(arrayToStr("in", n) + "|sigin",
+		arrayToStr("out", n) + "|sigout", std::to_string(n) + "bitNegate"));
+
+	LogicBlock& inv = createNBitInvert(sim, neg, n);
+	LogicBlock& add = createNBitAdd1(sim, neg, n);
+	LogicBlock& delay = neg.add(LogicBlockDelay);
+
+	sim.connect(neg, "in[]", inv, "in[]", inin);
+	sim.connect(neg, "sigin", delay, "in", inin);
+	sim.connect(inv, "out[]", add, "a[]");
+	sim.connect(delay, "out", add, "sigin");
+	sim.connect(add, "out[]", neg, "out[]", outout);
+	sim.connect(add, "sigout", neg, "sigout", outout);
+
+	return neg;
+}
+
 // 3n + 2 cycles
 // in: a[], b[], sigin
 // out: out[], overflow, sigout
@@ -244,19 +289,12 @@ static LogicBlock& createNBitSub(LogicSim& sim, LogicBlock& parent, int n)
 		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
 		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitSubtract"));
 
-	LogicBlock& inv = createNBitInvert(sim, sub, n);
-	LogicBlock& tempAdd = createNBitAdd1(sim, sub, n);
+	LogicBlock& neg = createNBitNegate(sim, sub, n);
 	LogicBlock& add = createNBitAdd(sim, sub, n);
 	LogicBlock& ret = sub.add(LogicBlockNot);
-
-	LogicBlock& delay0 = sub.add(LogicBlockDelay);
-	delay0.setPos(15, 200);
-	delay0.setExpand(false);
-
-	inv.setExpand(false);
-	inv.setPos(15, 100);
-	tempAdd.setExpand(false);
-	tempAdd.setPos(150, 100);
+	LogicBlock& delay = sub.add(LogicBlockDelay);
+	neg.setExpand(false);
+	neg.setPos(15, 10);
 	add.setExpand(false);
 	add.setPos(300, 15);
 	ret.setPos(450, 100);
@@ -275,21 +313,20 @@ static LogicBlock& createNBitSub(LogicSim& sim, LogicBlock& parent, int n)
 	// ret
 	// delay1
 
-	sim.connect(sub, "sigin", delay0, "in", inin);
-	sim.connect(delay0, "out", tempAdd, "sigin");
-	sim.connect(tempAdd, "sigout", add, "sigin");
+	sim.connect(sub, "sigin", neg, "sigin", inin); // 0
+	sim.connect(neg, "sigout", add, "sigin"); // 1
 
-	sim.connect(sub, "b[]", inv, "in[]", inin); // 0
-	sim.connect(inv, "out[]", tempAdd, "a[]"); // 1
+	sim.connect(sub, "b[]", neg, "in[]", inin); // 0
 
 	sim.connect(sub, "a[]", add, "a[]", inin); // 0
-	sim.connect(tempAdd, "out[]", add, "b[]"); // 2
+	sim.connect(neg, "out[]", add, "b[]"); // 1
 
-	sim.connect(add, "out[]", sub, "out[]", outout); // 3
-	sim.connect(add, "overflow", ret, "in"); // 3
-	sim.connect(ret, "out", sub, "overflow", outout); // 4
+	sim.connect(add, "out[]", sub, "out[]", outout); // 2
+	sim.connect(add, "overflow", ret, "in"); // 2
+	sim.connect(ret, "out", sub, "overflow", outout); // 3
 
-	sim.connect(add, "sigout", sub, "sigout", outout);
+	sim.connect(add, "sigout", delay, "in"); // 2
+	sim.connect(delay, "out", sub, "sigout", outout); // 3
 
 	return sub;
 }
@@ -378,10 +415,10 @@ static LogicBlock& createNBitGate(LogicSim& sim, LogicBlock& parent, int n)
 // 1 cycle
 // in: in[]
 // out: out[]
-static LogicBlock& createNBitShiftM(LogicSim& sim, LogicBlock& parent, int n, int m)
+static LogicBlock& createNBitShiftLeftM(LogicSim& sim, LogicBlock& parent, int n, int m)
 {
 	LogicBlock& shift = parent.add(LogicBlock(arrayToStr("in", n), arrayToStr("out", n),
-		std::to_string(n) + "bitShift" + (m > 0 ? "Up" : "Down") + std::to_string(abs(m))));
+		std::to_string(n) + "bitShiftLeft" + std::to_string(m)));
 
 	for (int i = 0; i < n; ++i)
 	{
@@ -392,6 +429,189 @@ static LogicBlock& createNBitShiftM(LogicSim& sim, LogicBlock& parent, int n, in
 
 	return shift;
 }
+
+// 1 cycle
+// in: in[]
+// out: out[]
+static LogicBlock& createNBitShiftRightM(LogicSim& sim, LogicBlock& parent, int n, int m)
+{
+	LogicBlock& shift = parent.add(LogicBlock(arrayToStr("in", n), arrayToStr("out", n),
+		std::to_string(n) + "bitShiftRight" + std::to_string(m)));
+
+	for (int i = 0; i < n; ++i)
+	{
+		int index = i - m;
+		if (index >= 0 && index < n)
+			sim.connect(shift, arrayToStr("in", i), shift, arrayToStr("out", index), inout);
+	}
+
+	return shift;
+}
+
+// 1 cycle
+// in: in[]
+// out: out[]
+static LogicBlock& createNBitShiftRightArithM(LogicSim& sim, LogicBlock& parent, int n, int m)
+{
+	LogicBlock& shift = parent.add(LogicBlock(arrayToStr("in", n), arrayToStr("out", n),
+		std::to_string(n) + "bitShiftRightArith" + std::to_string(m)));
+
+	for (int i = 0; i < n; ++i)
+	{
+		int index = i - m;
+		if (index >= 0 && index < n)
+			sim.connect(shift, arrayToStr("in", i), shift, arrayToStr("out", index), inout);
+	}
+	for (int i = 1; i <= m; ++i)
+		sim.connect(shift, arrayToStr("in", n - 1), shift, arrayToStr("out", n - m), inout);
+
+	return shift;
+}
+
+// 1 cycle
+// in: in[]
+// out: out[]
+static LogicBlock& createNBitCycleLeftM(LogicSim& sim, LogicBlock& parent, int n, int m)
+{
+	LogicBlock& shift = parent.add(LogicBlock(arrayToStr("in", n), arrayToStr("out", n),
+		std::to_string(n) + "bitCycleLeft" + std::to_string(m)));
+
+	for (int i = 0; i < n; ++i)
+	{
+		int index = (i + m) % n;
+		sim.connect(shift, arrayToStr("in", i), shift, arrayToStr("out", index), inout);
+	}
+
+	return shift;
+}
+
+// 1 cycle
+// in: in[]
+// out: out[]
+static LogicBlock& createNBitCycleRightM(LogicSim& sim, LogicBlock& parent, int n, int m)
+{
+	LogicBlock& shift = parent.add(LogicBlock(arrayToStr("in", n), arrayToStr("out", n),
+		std::to_string(n) + "bitCycleRight" + std::to_string(m)));
+
+	for (int i = 0; i < n; ++i)
+	{
+		int index = (i - m + n) % n;
+		sim.connect(shift, arrayToStr("in", i), shift, arrayToStr("out", index), inout);
+	}
+
+	return shift;
+}
+
+
+
+// 2n*log2(n) + 2 cycles
+// in: a[], b[], sigin
+// out: out[]x2, sigout
+static LogicBlock& createNBitMulPP(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& mul = parent.add(LogicBlock(
+		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin", 
+		arrayToStr("out", 2 * n) + "|sigout", std::to_string(n) + "bitMulPP"));
+
+	LogicBlock& delay = createNDelay(sim, mul, 2);
+	delay.setExpand(false);
+	delay.setPos(225, 15);
+	sim.connect(mul, "sigin", delay, "in", inin);
+
+	std::vector<LogicBlock*> adds;
+	int tempn = (n + 1) / 2;
+	int start = 0;
+	for (int c = 0; tempn; ++c)
+	{
+		for (int i = 0; i < tempn; ++i)
+		{
+			LogicBlock& add = createNBitAdd(sim, mul, n * 2);
+			add.setExpand(false);
+			add.setPos(300 + c * 125, 50 + i * 280);
+
+			if (c == 0)	// hook up shifts later (0th iteration of c)
+			{
+				if (i == 0)
+					sim.connect(delay, "out", add, "sigin");
+			}
+			else if (c == 1) // different bc there may be a weird number of adds due to odd n
+			{
+				if (i == 0)
+					sim.connect(*adds[start + i * 2 + 0], "sigout", add, "sigin");
+				sim.connect(*adds[start + i * 2 + 0], "out[]", add, "a[]");
+				if (i * 2 + 1 < adds.size())
+					sim.connect(*adds[start + i * 2 + 1], "out[]", add, "b[]");
+			}
+			else
+			{
+				if (i == 0)
+					sim.connect(*adds[start + i * 2 + 0], "sigout", add, "sigin");
+				sim.connect(*adds[start + i * 2 + 0], "out[]", add, "a[]");
+				sim.connect(*adds[start + i * 2 + 1], "out[]", add, "b[]");
+			}
+
+			adds.push_back(&add);
+		}
+		start = adds.size() - tempn;
+		tempn /= 2;
+	}
+
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& gate = createNBitGate(sim, mul, n);
+		LogicBlock& shift = createNBitShiftLeftM(sim, mul, n * 2, i);
+
+		gate.setExpand(false);
+		gate.setPos(50, 50 + i * 150);
+		shift.setExpand(false);
+		shift.setPos(150, 50 + i * 150);
+
+		sim.connect(mul, "a[]", gate, "in[]", inin);
+		sim.connect(mul, arrayToStr("b", i), gate, "write", inin);
+		sim.connect(gate, "out[]", shift, "in[]");
+		sim.connect(shift, "out[]", *adds[i / 2], (i % 2 == 0 ? "a[]" : "b[]"));
+	}
+
+	sim.connect(*adds.back(), "out[]", mul, "out[]", outout);
+	sim.connect(*adds.back(), "sigout", mul, "sigout", outout);
+
+	return mul;
+}
+
+
+// 1 cycles
+// in: a[], b[], sigin
+// out: out[], sigout
+static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& mul = parent.add(LogicBlock(
+		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin", arrayToStr("out", n),
+		std::to_string(n) + "bitMul"));
+
+	// Positive * positive
+	LogicBlock& notPP0 = mul.add(LogicBlockNot);
+	LogicBlock& notPP1 = mul.add(LogicBlockNot);
+	LogicBlock& andPP = mul.add(LogicBlockAnd);
+	LogicBlock& gatePP = createNBitGate(sim, mul, n);
+
+	// Positive * negative
+	LogicBlock& notPN = mul.add(LogicBlockNot);
+	LogicBlock& passPN = mul.add(LogicBlockDelay);
+	LogicBlock& andPN = mul.add(LogicBlockAnd);
+
+	// Negative * positive
+	LogicBlock& passNP = mul.add(LogicBlockDelay);
+	LogicBlock& notNP = mul.add(LogicBlockNot);
+	LogicBlock& andNP = mul.add(LogicBlockAnd);
+
+	// Negative * positive
+	LogicBlock& passNN0 = mul.add(LogicBlockDelay);
+	LogicBlock& passNN1 = mul.add(LogicBlockDelay);
+	LogicBlock& andNN = mul.add(LogicBlockAnd);
+
+	return mul;
+}
+
 
 // n cycles on, n cycles off
 // in: pause
@@ -690,7 +910,7 @@ static LogicBlock& createNBitNumberEditor(LogicSim& sim, LogicBlock& parent, int
 // out: out[]
 static LogicBlock& createNBitNumberEditorCtrl(LogicSim& sim, LogicBlock& parent, int n)
 {
-	LogicBlock& ctrl = parent.add(LogicBlock("", arrayToStr("out", n), 
+	LogicBlock& ctrl = parent.add(LogicBlock("", arrayToStr("out", n) + "|sigout",
 		std::to_string(n) + "bitNumEditCtrl"));
 
 	LogicBlock& edit = createNBitNumberEditor(sim, ctrl, 8);
@@ -713,6 +933,7 @@ static LogicBlock& createNBitNumberEditorCtrl(LogicSim& sim, LogicBlock& parent,
 	action.setPos(15, 185);
 
 	sim.connect(edit, "out[]", ctrl, "out[]", outout);
+	sim.connect(action, "out", ctrl, "sigout", outout);
 
 	return ctrl;
 }

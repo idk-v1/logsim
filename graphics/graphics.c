@@ -199,7 +199,7 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				dy = y1 - y0;
 			}
 			float slope = dy / (float)dx;
-			x1 = min(x1, surface->w);
+			x1 = min(x1, surface->w - 1);
 			x0 = max(x0, 0);
 			float end = roundf(slope * x1 + y0);
 			float start = roundf(slope * x0 + y0);
@@ -208,7 +208,7 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				for (Sint32 x = x0; x <= x1; ++x)
 				{
 					float y = roundf(slope * (x - x0) + y0);
-					setPixelUC(surface, x, y, color);
+					setPixel(surface, x, y, color);
 				}
 			}
 			else
@@ -234,7 +234,7 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				dy = y1 - y0;
 			}
 			float slope = dx / (float)dy;
-			y1 = min(y1, surface->h);
+			y1 = min(y1, surface->h - 1);
 			y0 = max(y0, 0);
 			float end = roundf(slope * y1 + x0);
 			float start = roundf(slope * y0 + x0);
@@ -243,7 +243,7 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				for (Sint32 y = y0; y <= y1; ++y)
 				{
 					float x = roundf(slope * (y - y0) + x0);
-					setPixelUC(surface, x, y, color);
+					setPixel(surface, x, y, color);
 				}
 			}
 			else

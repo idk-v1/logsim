@@ -15,24 +15,39 @@ int main()
 
 	LogicSim sim;
 
-	LogicBlock& editaddr = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	editaddr.setPos(15, 15);
-	LogicBlock& editdata = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	editdata.setPos(15, 250);
+	LogicBlock& edita = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
+	edita.setPos(15, 15);
+	LogicBlock& editb = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
+	editb.setPos(15, 250);
 
-	LogicBlock& mem = createMemoryAddr(sim, sim.getBoard(), 8, 8, 8);
-	mem.setPos(300, 15);
-	
-	
-	LogicBlock& read = sim.add(LogicBlockToggle);
-	read.setPos(15, 500);
-	LogicBlock& write = sim.add(LogicBlockToggle);
-	write.setPos(15, 525);
+	LogicBlock& mul = createNBitMulPP(sim, sim.getBoard(), 8);
+	mul.setPos(250, 15);
+	sim.connect(edita, "out[]", mul, "a[]");
+	sim.connect(editb, "out[]", mul, "b[]");
 
-	sim.connect(editaddr, "out[]", mem, "addr[]");
-	sim.connect(editdata, "out[]", mem, "data[]");
-	sim.connect(write, "out", mem, "write");
-	sim.connect(read, "out", mem, "read");
+	sim.connect(edita, "sigout", mul, "sigin");
+	sim.connect(editb, "sigout", mul, "sigin");
+	
+
+	// Addressable memory
+	//LogicBlock& editaddr = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
+	//editaddr.setPos(15, 15);
+	//LogicBlock& editdata = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
+	//editdata.setPos(15, 250);
+	//
+	//LogicBlock& mem = createMemoryAddr(sim, sim.getBoard(), 8, 8, 8);
+	//mem.setPos(300, 15);
+	//
+	//
+	//LogicBlock& read = sim.add(LogicBlockToggle);
+	//read.setPos(15, 500);
+	//LogicBlock& write = sim.add(LogicBlockToggle);
+	//write.setPos(15, 525);
+	//
+	//sim.connect(editaddr, "out[]", mem, "addr[]");
+	//sim.connect(editdata, "out[]", mem, "data[]");
+	//sim.connect(write, "out", mem, "write");
+	//sim.connect(read, "out", mem, "read");
 
 	// Add 1 loop
 	//int n = 16;
@@ -126,9 +141,14 @@ int main()
 
 		sim.draw(surface);
 
-		drawNumberLabel(surface, editaddr, 8);
-		drawNumberLabel(surface, editdata, 8);
-		drawNumberLabel(surface, mem, 8);
+		drawNumberLabel(surface, edita, 8);
+		drawNumberLabel(surface, editb, 8);
+		drawNumberLabel(surface, mul, 16);
+
+		// Addressable memory
+		//drawNumberLabel(surface, editaddr, 8);
+		//drawNumberLabel(surface, editdata, 8);
+		//drawNumberLabel(surface, mem, 8);
 
 		// Add 1 loop
 		//drawNumberLabel(surface, mem, n);

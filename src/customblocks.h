@@ -585,7 +585,8 @@ static LogicBlock& createNBitMulPP(LogicSim& sim, LogicBlock& parent, int n)
 static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 {
 	LogicBlock& mul = parent.add(LogicBlock(
-		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin", arrayToStr("out", n),
+		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin", 
+		arrayToStr("out", n) + "|sigout",
 		std::to_string(n) + "bitMul"));
 
 	// Positive * positive
@@ -604,7 +605,7 @@ static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 	LogicBlock& notNP = mul.add(LogicBlockNot);
 	LogicBlock& andNP = mul.add(LogicBlockAnd);
 
-	// Negative * positive
+	// Negative * negative
 	LogicBlock& passNN0 = mul.add(LogicBlockDelay);
 	LogicBlock& passNN1 = mul.add(LogicBlockDelay);
 	LogicBlock& andNN = mul.add(LogicBlockAnd);

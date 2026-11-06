@@ -578,37 +578,255 @@ static LogicBlock& createNBitMulPP(LogicSim& sim, LogicBlock& parent, int n)
 	return mul;
 }
 
-
-// 1 cycles
+// 2n*(log2(n) + 1) + 2 cycles
 // in: a[], b[], sigin
-// out: out[], sigout
+// out: out[]x2, sigout
+static LogicBlock& createNBitMulPN(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& mul = parent.add(LogicBlock(
+		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
+		arrayToStr("out", 2 * n) + "|sigout", std::to_string(n) + "bitMulPN"));
+
+	LogicBlock& delay = createNDelay(sim, mul, 2);
+	delay.setExpand(false);
+	delay.setPos(225, 15);
+	sim.connect(mul, "sigin", delay, "in", inin);
+
+	std::vector<LogicBlock*> adds;
+	int tempn = n / 2;
+	int start = 0;
+	int c = 0;
+	for (; tempn; ++c)
+	{
+		for (int i = 0; i < tempn; ++i)
+		{
+			LogicBlock& add = createNBitAdd(sim, mul, n * 2);
+			add.setExpand(false);
+			add.setPos(300 + c * 125, 50 + i * 280);
+
+			if (c == 0)	// hook up shifts later (0th iteration of c)
+			{
+				if (i == 0)
+					sim.connect(delay, "out", add, "sigin");
+			}
+			else if (c == 1) // different bc there may be a weird number of adds due to odd n
+			{
+				if (i == 0)
+					sim.connect(*adds[start + i * 2 + 0], "sigout", add, "sigin");
+				sim.connect(*adds[start + i * 2 + 0], "out[]", add, "a[]");
+				if (i * 2 + 1 < adds.size())
+					sim.connect(*adds[start + i * 2 + 1], "out[]", add, "b[]");
+			}
+			else
+			{
+				if (i == 0)
+					sim.connect(*adds[start + i * 2 + 0], "sigout", add, "sigin");
+				sim.connect(*adds[start + i * 2 + 0], "out[]", add, "a[]");
+				sim.connect(*adds[start + i * 2 + 1], "out[]", add, "b[]");
+			}
+
+			adds.push_back(&add);
+		}
+		start = adds.size() - tempn;
+		tempn /= 2;
+	}
+
+	LogicBlock& negate = createNBitNegate(sim, mul, n * 2);
+
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& gate = createNBitGate(sim, mul, n);
+		LogicBlock& shift = createNBitShiftLeftM(sim, mul, n * 2, i);
+
+		gate.setExpand(false);
+		gate.setPos(50, 50 + i * 150);
+		shift.setExpand(false);
+		shift.setPos(150, 50 + i * 150);
+
+		sim.connect(mul, "a[]", gate, "in[]", inin);
+		sim.connect(mul, arrayToStr("b", i), gate, "write", inin);
+		sim.connect(gate, "out[]", shift, "in[]");
+		if (i == n - 1)
+			sim.connect(shift, "out[]", negate, "in[]");
+		else
+			sim.connect(shift, "out[]", *adds[i / 2], (i % 2 == 0 ? "a[]" : "b[]"));
+	}
+
+	LogicBlock& delaybuf = createNDelayBuf(sim, mul, n, n * 2);
+	LogicBlock& lastAdd = createNBitAdd(sim, mul, n * 2);
+
+	delaybuf.setExpand(false);
+	delaybuf.setPos(300 + (c - 1) * 125, 330);
+	lastAdd.setExpand(false);
+	lastAdd.setPos(300 + c * 125, 50);
+	negate.setExpand(false);
+	negate.setPos(300, 50 + (n / 2) * 280);
+
+	sim.connect(negate, "out[]", delaybuf, "in[]");
+	sim.connect(delaybuf, "out[]", lastAdd, "b[]");
+	sim.connect(*adds.back(), "out[]", lastAdd, "a[]");
+	sim.connect(*adds.back(), "sigout", lastAdd, "sigin");
+
+	sim.connect(lastAdd, "out[]", mul, "out[]", outout);
+	sim.connect(lastAdd, "sigout", mul, "sigout", outout);
+
+	return mul;
+}
+
+
+// 2n*log2(n) + 2 or 2n*(log2(n) + 1) + 2 or 2n*log2(n) + n + 3 cycles
+// in: a[], b[], sigin
+// out: out[]x2, sigout
 static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 {
 	LogicBlock& mul = parent.add(LogicBlock(
 		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin", 
-		arrayToStr("out", n) + "|sigout",
+		arrayToStr("out", n * 2) + "|sigout",
 		std::to_string(n) + "bitMul"));
 
+	LogicBlock& mulPP = createNBitMulPP(sim, mul, n);
+	mulPP.setExpand(false);
+	mulPP.setPos(300, 15);
+	LogicBlock& mulPN = createNBitMulPN(sim, mul, n);
+	mulPN.setExpand(false);
+	mulPN.setPos(300, 300);
+	LogicBlock& negatea = createNBitNegate(sim, mul, n);
+	negatea.setExpand(false);
+	negatea.setPos(200, 15);
+	LogicBlock& negateb = createNBitNegate(sim, mul, n);
+	negateb.setExpand(false);
+	negateb.setPos(200, 150);
+
+	LogicBlock& delay = createNDelay(sim, mul, 2);
+	delay.setExpand(false);
+	sim.connect(mul, "sigin", delay, "in", inin);
+
 	// Positive * positive
-	LogicBlock& notPP0 = mul.add(LogicBlockNot);
-	LogicBlock& notPP1 = mul.add(LogicBlockNot);
+	LogicBlock& notPPa = mul.add(LogicBlockNot);
+	LogicBlock& notPPb = mul.add(LogicBlockNot);
 	LogicBlock& andPP = mul.add(LogicBlockAnd);
-	LogicBlock& gatePP = createNBitGate(sim, mul, n);
+	LogicBlock& gatePPa = createNBitGate(sim, mul, n);
+	gatePPa.setExpand(false);
+	LogicBlock& gatePPb = createNBitGate(sim, mul, n);
+	gatePPb.setExpand(false);
+	LogicBlock& gatePPs = mul.add(LogicBlockAnd);
+	notPPa.setPos(15, 15);
+	notPPb.setPos(15, 60);
+	andPP.setPos(15, 105);
+	gatePPs.setPos(15, 150);
+	gatePPa.setPos(100, 15);
+	gatePPb.setPos(100, 100);
+	sim.connect(mul, arrayToStr("a", n - 1), notPPa, "in", inin);
+	sim.connect(mul, arrayToStr("b", n - 1), notPPb, "in", inin);
+	sim.connect(notPPa, "out", andPP, "a");
+	sim.connect(notPPb, "out", andPP, "b");
+	sim.connect(andPP, "out", gatePPa, "write");
+	sim.connect(andPP, "out", gatePPb, "write");
+	sim.connect(mul, "a[]", gatePPa, "in[]", inin);
+	sim.connect(mul, "b[]", gatePPb, "in[]", inin);
+	sim.connect(gatePPa, "out[]", mulPP, "a[]");
+	sim.connect(gatePPb, "out[]", mulPP, "b[]");
+	sim.connect(delay, "out", gatePPs, "a");
+	sim.connect(andPP, "out", gatePPs, "b");
+	sim.connect(gatePPs, "out", mulPP, "sigin");
+	sim.connect(mulPP, "out[]", mul, "out[]", outout);
+	sim.connect(mulPP, "sigout", mul, "sigout", outout);
 
 	// Positive * negative
-	LogicBlock& notPN = mul.add(LogicBlockNot);
-	LogicBlock& passPN = mul.add(LogicBlockDelay);
+	LogicBlock& notPNa = mul.add(LogicBlockNot);
+	LogicBlock& passPNb = mul.add(LogicBlockDelay);
 	LogicBlock& andPN = mul.add(LogicBlockAnd);
+	LogicBlock& gatePNa = createNBitGate(sim, mul, n);
+	gatePNa.setExpand(false);
+	LogicBlock& gatePNb = createNBitGate(sim, mul, n);
+	gatePNb.setExpand(false);
+	LogicBlock& gatePNs = mul.add(LogicBlockAnd);
+	notPNa.setPos(15, 15 + 185);
+	passPNb.setPos(15, 60 + 185);
+	andPN.setPos(15, 105 + 185);
+	gatePNs.setPos(15, 150 + 185);
+	gatePNa.setPos(100, 15 + 185);
+	gatePNb.setPos(100, 100 + 185);
+	sim.connect(mul, arrayToStr("a", n - 1), notPNa, "in", inin);
+	sim.connect(mul, arrayToStr("b", n - 1), passPNb, "in", inin);
+	sim.connect(notPNa, "out", andPN, "a");
+	sim.connect(passPNb, "out", andPN, "b");
+	sim.connect(andPN, "out", gatePNa, "write");
+	sim.connect(andPN, "out", gatePNb, "write");
+	sim.connect(mul, "a[]", gatePNa, "in[]", inin);
+	sim.connect(mul, "b[]", gatePNb, "in[]", inin);
+	sim.connect(gatePNa, "out[]", mulPN, "a[]");
+	sim.connect(gatePNb, "out[]", mulPN, "b[]");
+	sim.connect(delay, "out", gatePNs, "a");
+	sim.connect(andPN, "out", gatePNs, "b");
+	sim.connect(gatePNs, "out", mulPN, "sigin");
+	sim.connect(mulPN, "out[]", mul, "out[]", outout);
+	sim.connect(mulPN, "sigout", mul, "sigout", outout);
 
 	// Negative * positive
-	LogicBlock& passNP = mul.add(LogicBlockDelay);
-	LogicBlock& notNP = mul.add(LogicBlockNot);
+	LogicBlock& passNPa = mul.add(LogicBlockDelay);
+	LogicBlock& notNPb = mul.add(LogicBlockNot);
 	LogicBlock& andNP = mul.add(LogicBlockAnd);
+	LogicBlock& gateNPa = createNBitGate(sim, mul, n);
+	gateNPa.setExpand(false);
+	LogicBlock& gateNPb = createNBitGate(sim, mul, n);
+	gateNPb.setExpand(false);
+	LogicBlock& gateNPs = mul.add(LogicBlockAnd);
+	passNPa.setPos(15, 15 + 185 * 2);
+	notNPb.setPos(15, 60 + 185 * 2);
+	andNP.setPos(15, 105 + 185 * 2);
+	gateNPs.setPos(15, 150 + 185 * 2);
+	gateNPa.setPos(100, 15 + 185 * 2);
+	gateNPb.setPos(100, 100 + 185 * 2);
+	sim.connect(mul, arrayToStr("a", n - 1), passNPa, "in", inin);
+	sim.connect(mul, arrayToStr("b", n - 1), notNPb, "in", inin);
+	sim.connect(passNPa, "out", andNP, "a");
+	sim.connect(notNPb, "out", andNP, "b");
+	sim.connect(andNP, "out", gateNPa, "write");
+	sim.connect(andNP, "out", gateNPb, "write");
+	sim.connect(mul, "a[]", gateNPa, "in[]", inin);
+	sim.connect(mul, "b[]", gateNPb, "in[]", inin);
+	sim.connect(gateNPa, "out[]", mulPN, "b[]");
+	sim.connect(gateNPb, "out[]", mulPN, "a[]");
+	sim.connect(delay, "out", gateNPs, "a");
+	sim.connect(andNP, "out", gateNPs, "b");
+	sim.connect(gateNPs, "out", mulPN, "sigin");
+	sim.connect(mulPN, "out[]", mul, "out[]", outout);
+	sim.connect(mulPN, "sigout", mul, "sigout", outout);
 
 	// Negative * negative
-	LogicBlock& passNN0 = mul.add(LogicBlockDelay);
-	LogicBlock& passNN1 = mul.add(LogicBlockDelay);
+	LogicBlock& passNNa = mul.add(LogicBlockDelay);
+	LogicBlock& passNNb = mul.add(LogicBlockDelay);
 	LogicBlock& andNN = mul.add(LogicBlockAnd);
+	LogicBlock& gateNNa = createNBitGate(sim, mul, n);
+	gateNNa.setExpand(false);
+	LogicBlock& gateNNb = createNBitGate(sim, mul, n);
+	gateNNb.setExpand(false);
+	LogicBlock& gateNNs = mul.add(LogicBlockAnd);
+	passNNa.setPos(15, 15 + 185 * 3);
+	passNNb.setPos(15, 60 + 185 * 3);
+	andNN.setPos(15, 105 + 185 * 3);
+	gateNNs.setPos(15, 150 + 185 * 3);
+	gateNNa.setPos(100, 15 + 185 * 3);
+	gateNNb.setPos(100, 100 + 185 * 3);
+	sim.connect(mul, arrayToStr("a", n - 1), passNNa, "in", inin);
+	sim.connect(mul, arrayToStr("b", n - 1), passNNb, "in", inin);
+	sim.connect(passNNa, "out", andNN, "a");
+	sim.connect(passNNb, "out", andNN, "b");
+	sim.connect(andNN, "out", gateNNa, "write");
+	sim.connect(andNN, "out", gateNNb, "write");
+	sim.connect(mul, "a[]", gateNNa, "in[]", inin);
+	sim.connect(mul, "b[]", gateNNb, "in[]", inin);
+	sim.connect(gateNNa, "out[]", negatea, "in[]");
+	sim.connect(gateNNb, "out[]", negateb, "in[]");
+	sim.connect(gateNNs, "out", negatea, "sigin");
+	sim.connect(negatea, "sigout", mulPP, "sigin");
+	sim.connect(negatea, "out[]", mulPP, "a[]");
+	sim.connect(negateb, "out[]", mulPP, "b[]");
+	sim.connect(delay, "out", gateNNs, "a");
+	sim.connect(andNN, "out", gateNNs, "b");
+	sim.connect(mulPP, "out[]", mul, "out[]", outout);
+	sim.connect(mulPP, "sigout", mul, "sigout", outout);
 
 	return mul;
 }

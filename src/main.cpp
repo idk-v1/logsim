@@ -20,7 +20,7 @@ int main()
 	LogicBlock& editb = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
 	editb.setPos(15, 250);
 
-	LogicBlock& mul = createNBitMulPP(sim, sim.getBoard(), 8);
+	LogicBlock& mul = createNBitMul(sim, sim.getBoard(), 8);
 	mul.setPos(250, 15);
 	sim.connect(edita, "out[]", mul, "a[]");
 	sim.connect(editb, "out[]", mul, "b[]");

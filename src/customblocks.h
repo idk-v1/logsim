@@ -1115,10 +1115,11 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 
 
 // in: one, five, ten, addsub, action
-// out: out[]
+// out: out[], sigout
 static LogicBlock& createNBitNumberEditor(LogicSim& sim, LogicBlock& parent, int n)
 {
-	LogicBlock& edit = parent.add(LogicBlock("one|five|ten|addsub|action", arrayToStr("out", n), 
+	LogicBlock& edit = parent.add(LogicBlock("one|five|ten|addsub|action", 
+		arrayToStr("out", n) + "|sigout",
 		std::to_string(n) + "bitNumEdit"));
 
 	LogicBlock& mem = createNBitMemory(sim, edit, n);
@@ -1194,10 +1195,14 @@ static LogicBlock& createNBitNumberEditor(LogicSim& sim, LogicBlock& parent, int
 	sim.connect(mem, "out[]", sub, "a[]");
 	sim.connect(sub, "out[]", subgate, "in[]");
 
+	LogicBlock& writedelay = createNDelay(sim, edit, 6);
+	sim.connect(edit, "action", writedelay, "in", inin);
+	sim.connect(writedelay, "out", edit, "sigout", outout);
+
 	return edit;
 }
 
-// out: out[]
+// out: out[], sigout
 static LogicBlock& createNBitNumberEditorCtrl(LogicSim& sim, LogicBlock& parent, int n)
 {
 	LogicBlock& ctrl = parent.add(LogicBlock("", arrayToStr("out", n) + "|sigout",
@@ -1223,7 +1228,7 @@ static LogicBlock& createNBitNumberEditorCtrl(LogicSim& sim, LogicBlock& parent,
 	action.setPos(15, 185);
 
 	sim.connect(edit, "out[]", ctrl, "out[]", outout);
-	sim.connect(action, "out", ctrl, "sigout", outout);
+	sim.connect(edit, "sigout", ctrl, "sigout", outout);
 
 	return ctrl;
 }

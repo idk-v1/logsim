@@ -1067,7 +1067,7 @@ static LogicBlock& createNBitROM(LogicSim& sim, LogicBlock& parent, int n, int64
 	return rom;
 }
 
-// 4 cycles read
+// 5 cycles read
 // in: addr[], read
 // out: out[], sigout
 static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits, int bitsPerByte, int n, int64_t* data)
@@ -1077,9 +1077,10 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 		arrayToStr("out", bitsPerByte) + "|sigout",
 		std::to_string(addrBits) + "bitAddrROM"));
 
-	LogicBlock& readdelay = createNDelay(sim, addr, 4);
+	LogicBlock& readdelay = createNDelay(sim, addr, 5);
 	sim.connect(addr, "read", readdelay, "in", inin);
 	sim.connect(readdelay, "out", addr, "sigout", outout);
+	readdelay.setExpand(false);
 
 	for (int i = 0; i < n; ++i)
 	{
@@ -1091,20 +1092,21 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 
 		mem.setExpand(false);
 		cmp.setExpand(false);
+		delay.setExpand(false);
 
 		num.setPos(50, 15 + i * 200);
 		cmp.setPos(150, 15 + i * 200);
 		mem.setPos(250, 15 + i * 200);
 
-		sim.connect(num, "out[]", cmp, "b[]");
-		sim.connect(addr, "addr[]", cmp, "a[]", inin);
+		sim.connect(num, "out[]", cmp, "b[]"); // 0
+		sim.connect(addr, "addr[]", cmp, "a[]", inin); // 0
 
-		sim.connect(cmp, "out", tempand, "a");
-		sim.connect(addr, "read", delay, "in", inin);
-		sim.connect(delay, "out", tempand, "b");
-		sim.connect(tempand, "out", mem, "read");
+		sim.connect(cmp, "out", tempand, "a"); // 2
+		sim.connect(addr, "read", delay, "in", inin); // 0
+		sim.connect(delay, "out", tempand, "b"); // 2
+		sim.connect(tempand, "out", mem, "read"); // 3
 
-		sim.connect(mem, "out[]", addr, "out[]", outout);
+		sim.connect(mem, "out[]", addr, "out[]", outout); // 5
 
 	}
 

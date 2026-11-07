@@ -280,24 +280,28 @@ static LogicBlock& createNBitNegate(LogicSim& sim, LogicBlock& parent, int n)
 	return neg;
 }
 
-// 3n + 2 cycles
+// 3n + 3 cycles
 // in: a[], b[], sigin
 // out: out[], overflow, sigout
 static LogicBlock& createNBitSub(LogicSim& sim, LogicBlock& parent, int n)
 {
+	// overflow (integer underflow) needs the high bit of a to change and there to be an overflow
 	LogicBlock& sub = parent.add(LogicBlock(
 		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
 		arrayToStr("out", n) + "|overflow|sigout", std::to_string(n) + "bitSubtract"));
 
 	LogicBlock& neg = createNBitNegate(sim, sub, n);
 	LogicBlock& add = createNBitAdd(sim, sub, n);
-	LogicBlock& ret = sub.add(LogicBlockNot);
-	LogicBlock& delay = sub.add(LogicBlockDelay);
+	LogicBlock& highxor = sub.add(LogicBlockXor);
+	LogicBlock& retand = sub.add(LogicBlockAnd);
+	LogicBlock& delay = createNDelay(sim, sub, 2);
 	neg.setExpand(false);
 	neg.setPos(15, 10);
 	add.setExpand(false);
 	add.setPos(300, 15);
-	ret.setPos(450, 100);
+	retand.setPos(450, 100);
+	highxor.setPos(450, 70);
+	delay.setExpand(false);
 
 	// step 0
 	// inv
@@ -322,11 +326,14 @@ static LogicBlock& createNBitSub(LogicSim& sim, LogicBlock& parent, int n)
 	sim.connect(neg, "out[]", add, "b[]"); // 1
 
 	sim.connect(add, "out[]", sub, "out[]", outout); // 2
-	sim.connect(add, "overflow", ret, "in"); // 2
-	sim.connect(ret, "out", sub, "overflow", outout); // 3
+	sim.connect(add, arrayToStr("out", n - 1), highxor, "a"); // 2
+	sim.connect(sub, arrayToStr("a", n - 1), highxor, "b", inin); // 0
+	sim.connect(add, "overflow", retand, "a"); // 3
+	sim.connect(highxor, "out", retand, "b"); // 3
+	sim.connect(retand, "out", sub, "overflow", outout); // 4
 
 	sim.connect(add, "sigout", delay, "in"); // 2
-	sim.connect(delay, "out", sub, "sigout", outout); // 3
+	sim.connect(delay, "out", sub, "sigout", outout); // 4
 
 	return sub;
 }

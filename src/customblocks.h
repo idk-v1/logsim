@@ -1067,7 +1067,7 @@ static LogicBlock& createNBitROM(LogicSim& sim, LogicBlock& parent, int n, int64
 	return rom;
 }
 
-// 5 cycles read
+// 4 cycles read
 // in: addr[], read
 // out: out[], sigout
 static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits, int bitsPerByte, int n, int64_t* data)
@@ -1106,7 +1106,7 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 		sim.connect(delay, "out", tempand, "b"); // 2
 		sim.connect(tempand, "out", mem, "read"); // 3
 
-		sim.connect(mem, "out[]", addr, "out[]", outout); // 5
+		sim.connect(mem, "out[]", addr, "out[]", outout); // 4
 
 	}
 

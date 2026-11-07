@@ -1077,36 +1077,35 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 		arrayToStr("out", bitsPerByte) + "|sigout",
 		std::to_string(addrBits) + "bitAddrROM"));
 
+	LogicBlock& readdelay = createNDelay(sim, addr, 4);
+	sim.connect(addr, "read", readdelay, "in", inin);
+	sim.connect(readdelay, "out", addr, "sigout", outout);
+
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& mem = createNBitROM(sim, addr, bitsPerByte, data[i]);
 		LogicBlock& cmp = createNBitCompare(sim, addr, addrBits);
 		LogicBlock& num = createNBitNumber(sim, addr, addrBits, i);
-		LogicBlock& gate = createNBitGate(sim, addr, 1);
-		LogicBlock& readdelay = createNDelay(sim, addr, 4);
-		LogicBlock& sigdelay = addr.add(LogicBlockDelay);
+		LogicBlock& tempand = addr.add(LogicBlockAnd);
+		LogicBlock& delay = createNDelay(sim, addr, 2);
 
 		mem.setExpand(false);
 		cmp.setExpand(false);
-		gate.setExpand(false);
-		readdelay.setExpand(false);
 
 		num.setPos(50, 15 + i * 200);
 		cmp.setPos(150, 15 + i * 200);
-		readdelay.setPos(50, 140 + i * 200);
-		gate.setPos(250, 125 + i * 200);
 		mem.setPos(250, 15 + i * 200);
 
 		sim.connect(num, "out[]", cmp, "b[]");
 		sim.connect(addr, "addr[]", cmp, "a[]", inin);
-		sim.connect(cmp, "out", gate, "write");
-		sim.connect(addr, "read", readdelay, "in", inin);
-		sim.connect(readdelay, "out", gate, "in[0]");
 
-		sim.connect(gate, "out[0]", mem, "read");
+		sim.connect(cmp, "out", tempand, "a");
+		sim.connect(addr, "read", delay, "in", inin);
+		sim.connect(delay, "out", tempand, "b");
+		sim.connect(tempand, "out", mem, "read");
 
 		sim.connect(mem, "out[]", addr, "out[]", outout);
-		sim.connect(gate, "out[0]", addr, "sigout", outout);
+
 	}
 
 	return addr;

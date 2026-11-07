@@ -997,12 +997,12 @@ static LogicBlock& createNBitMemory(LogicSim& sim, LogicBlock& parent, int n)
 // 4 cycles read
 // in: data[], addr[], write, read
 // out: out[], sigout
-static LogicBlock& createMemoryAddr(LogicSim& sim, LogicBlock& parent, int addrBits, int bitsPerByte, int n)
+static LogicBlock& createAddrMemory(LogicSim& sim, LogicBlock& parent, int addrBits, int bitsPerByte, int n)
 {
 	LogicBlock& addr = parent.add(LogicBlock(
 		arrayToStr("data", bitsPerByte) + "|" + arrayToStr("addr", addrBits) + 
 		"|write|read", arrayToStr("out", bitsPerByte) + "|sigout", 
-		std::to_string(addrBits) + "bitMemAddr"));
+		std::to_string(addrBits) + "bitAddrMem"));
 
 	for (int i = 0; i < n; ++i)
 	{
@@ -1048,6 +1048,70 @@ static LogicBlock& createMemoryAddr(LogicSim& sim, LogicBlock& parent, int addrB
 
 	return addr;
 }
+
+
+// 1 cycle read
+// in: read
+// out: out[]
+static LogicBlock& createNBitROM(LogicSim& sim, LogicBlock& parent, int n, int64_t data)
+{
+	LogicBlock& rom = parent.add(LogicBlock("read", arrayToStr("out", n), 
+		std::to_string(n) + "bitROM"));
+
+	LogicBlock& num = createNBitNumber(sim, rom, n, data);
+	LogicBlock& gate = createNBitGate(sim, rom, n);
+	sim.connect(num, "out[]", gate, "in[]");
+	sim.connect(rom, "read", gate, "write", inin);
+	sim.connect(gate, "out[]", rom, "out[]", outout);
+
+	return rom;
+}
+
+// 4 cycles read
+// in: addr[], read
+// out: out[], sigout
+static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits, int bitsPerByte, int n, int64_t* data)
+{
+	LogicBlock& addr = parent.add(LogicBlock(
+		arrayToStr("addr", addrBits) + "|read", 
+		arrayToStr("out", bitsPerByte) + "|sigout",
+		std::to_string(addrBits) + "bitAddrROM"));
+
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& mem = createNBitROM(sim, addr, bitsPerByte, data[i]);
+		LogicBlock& cmp = createNBitCompare(sim, addr, addrBits);
+		LogicBlock& num = createNBitNumber(sim, addr, addrBits, i);
+		LogicBlock& gate = createNBitGate(sim, addr, 1);
+		LogicBlock& readdelay = createNDelay(sim, addr, 4);
+		LogicBlock& sigdelay = addr.add(LogicBlockDelay);
+
+		mem.setExpand(false);
+		cmp.setExpand(false);
+		gate.setExpand(false);
+		readdelay.setExpand(false);
+
+		num.setPos(50, 15 + i * 200);
+		cmp.setPos(150, 15 + i * 200);
+		readdelay.setPos(50, 140 + i * 200);
+		gate.setPos(250, 125 + i * 200);
+		mem.setPos(250, 15 + i * 200);
+
+		sim.connect(num, "out[]", cmp, "b[]");
+		sim.connect(addr, "addr[]", cmp, "a[]", inin);
+		sim.connect(cmp, "out", gate, "write");
+		sim.connect(addr, "read", readdelay, "in", inin);
+		sim.connect(readdelay, "out", gate, "in[0]");
+
+		sim.connect(gate, "out[0]", mem, "read");
+
+		sim.connect(mem, "out[]", addr, "out[]", outout);
+		sim.connect(gate, "out[0]", addr, "sigout", outout);
+	}
+
+	return addr;
+}
+
 
 
 // in: one, five, ten, addsub, action

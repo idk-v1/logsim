@@ -520,6 +520,8 @@ static LogicBlock& createNBitCompareUns(LogicSim& sim, LogicBlock& parent, int n
 		"less|equal|greater|sigout", std::to_string(n) + "bitCompareUns"));
 
 	/*
+	i would rather not use subtraction bc very slow 
+	
 	idea for bitmasking
 	0b01010111 (+087) a
 	0b00110011 (+051) b
@@ -527,10 +529,37 @@ static LogicBlock& createNBitCompareUns(LogicSim& sim, LogicBlock& parent, int n
 	kindof an xor, but directional if that makes sense
 	a,b not,pass -> and 0b00100000 a
 	a,b pass,not -> and 0b01000100 b
+	                    0b10111011 inv
+						0b10111100 add1
 
 	unfortunately I would still have to do it the slow way, 
 	but it does guarantee that an add will never carry,	
 	so i could use a half-adder chain instead of a full-adder chain, using half the cycles
+	but negating loses this obv, so its not useful for subtraction
+
+	or
+
+	find highest bit of above bitmasking approach
+	0b01100100
+	in -> not1 -> not2 -> out, (all lower not2s)
+
+	in, not1, not2, out
+	 0     1     0    0
+	 1     0     1    1
+	 1     0     1    0
+	 0     1     0    0
+	 0     1     0    0
+	 1     0     1    0
+	 0     1     0    0
+	 0     1     0    0
+
+	but now im also stuck
+	
+	0b00100000 a -> 0b00100000 a
+	0b01000100 b -> 0b01000000 b
+
+	find highest bit could be modified to use the directional xor from above
+	unknown how many cycles (4 + this)
 	*/
 
 	return less;

@@ -15,14 +15,20 @@ int main()
 
 	LogicSim sim;
 
-	int64_t data[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
-	LogicBlock& rom = createAddrROM(sim, sim.getBoard(), 8, 8, 8, data);
+	//int64_t data[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+	//LogicBlock& rom = createAddrROM(sim, sim.getBoard(), 8, 8, 8, data);
 	LogicBlock& edit = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	LogicBlock& read = sim.add(LogicBlockToggle);
-	rom.setPos(300, 15);
-	read.setPos(0, 300);
-	sim.connect(edit, "out[]", rom, "addr[]");
-	sim.connect(read, "out", rom, "read");
+	LogicBlock& high = createNBitHighestBit(sim, sim.getBoard(), 8);
+	LogicBlock& low = createNBitLowestBit(sim, sim.getBoard(), 8);
+	high.setPos(450, 50);
+	low.setPos(250, 50);
+	sim.connect(edit, "out[]", high, "in[]");
+	sim.connect(edit, "out[]", low, "in[]");
+	//LogicBlock& read = sim.add(LogicBlockToggle);
+	//rom.setPos(300, 15);
+	//read.setPos(0, 300);
+	//sim.connect(edit, "out[]", rom, "addr[]");
+	//sim.connect(read, "out", rom, "read");
 
 	sim.recalc();
 

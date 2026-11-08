@@ -510,6 +510,64 @@ static LogicBlock& createNBitCycleRightM(LogicSim& sim, LogicBlock& parent, int 
 }
 
 
+// 3 cycles
+// in: in[]
+// out: out[]
+static LogicBlock& createNBitHighestBit(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& high = parent.add(LogicBlock(
+		arrayToStr("in", n), arrayToStr("out", n), std::to_string(n) + "bitHighestBit"));
+
+	std::vector<LogicBlock*> nots;
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& temp0 = high.add(LogicBlockNot);
+		LogicBlock& temp1 = high.add(LogicBlockNot);
+		temp0.setPos(15, 15 + i * 40);
+		temp1.setPos(75, 15 + i * 40);
+		sim.connect(high, arrayToStr("in", i), temp0, "in", inin);
+		sim.connect(temp0, "out", temp1, "in");
+		sim.connect(temp1, "out", high, arrayToStr("out", i), outout);
+		nots.push_back(&temp0);
+		nots.push_back(&temp1);
+	}
+
+	for (int i = n - 1; i >= 0; --i)
+		for (int ii = i - 1; ii >= 0; --ii)
+			sim.connect(*nots[i * 2 + 1], "out", *nots[ii * 2 + 1], "in");
+
+	return high;
+}
+
+// 3 cycles
+// in: in[]
+// out: out[]
+static LogicBlock& createNBitLowestBit(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& high = parent.add(LogicBlock(
+		arrayToStr("in", n), arrayToStr("out", n), std::to_string(n) + "bitLowestBit"));
+
+	std::vector<LogicBlock*> nots;
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& temp0 = high.add(LogicBlockNot);
+		LogicBlock& temp1 = high.add(LogicBlockNot);
+		temp0.setPos(15, 15 + i * 40);
+		temp1.setPos(75, 15 + i * 40);
+		sim.connect(high, arrayToStr("in", i), temp0, "in", inin);
+		sim.connect(temp0, "out", temp1, "in");
+		sim.connect(temp1, "out", high, arrayToStr("out", i), outout);
+		nots.push_back(&temp0);
+		nots.push_back(&temp1);
+	}
+
+	for (int i = 0; i < n; ++i)
+		for (int ii = i + 1; ii < n; ++ii)
+			sim.connect(*nots[i * 2 + 1], "out", *nots[ii * 2 + 1], "in");
+
+	return high;
+}
+
 // ??? cycles
 // in: a[], b[], sigin
 // out: less, equal, greater, sigout

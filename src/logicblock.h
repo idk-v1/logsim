@@ -74,7 +74,8 @@ struct LogicBlock
 	LogicBlock(const std::string& label);
 	LogicBlock(const std::string& in, const std::string& out, const std::string& label);
 
-	void tick(int mousex, int mousey, bool click);
+	void tick(int mousex, int mousey, int oldmousex, int oldmousey, 
+		bool click, bool oldclick, bool& found, LogicBlock** held);
 
 	LogicBlock& add(const LogicBlock& block);
 
@@ -84,9 +85,7 @@ struct LogicBlock
 
 	void setExpand(bool expand);
 
-	void setExpandRec(bool expand);
-
-	void recalc(int px = 0, int py = 0);
+	void recalc(int px, int py, bool expanded);
 
 	void draw(SDL_Surface* surface);
 
@@ -102,11 +101,15 @@ struct LogicBlock
 	std::map<std::string, WriteData, strCmpWithArray> output;
 	std::string label;
 
+	static void setFontSize(int w, int h, int fontsize, int posMul);
+
 private:
 	std::list<LogicBlock> blocks;
 
+	static int fontw, fonth, fontsize, posMul;
+
 	int x = 0, y = 0, w = 0, h = 0, bx = 0, by = 0;
-	bool expand = true, parExpand = true;
+	bool expand = true, expanded = true;
 };
 
 // in: a, b

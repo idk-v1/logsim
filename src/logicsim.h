@@ -21,11 +21,25 @@ struct LogicSim
 
 	LogicBlock& add(const LogicBlock& block);
 
-	void tick(int mousex, int mousey, bool click);
+	void tick(int mousex, int mousey, int oldmousex, int oldmousey, bool click, bool oldclick);
 
 	void draw(SDL_Surface* surface);
 
+	void setZoom(int scale, int screenw, int screenh);
+	void zoom(int scale, int screenw, int screenh);
+	void setScroll(int x, int y);
+	void scroll(int x, int y);
+
 private:
+	bool needsRecalc = true;
+	int scale = 0;
+	int fontw = 0;
+	int fonth = 0;
+	int scrollx = 0;
+	int scrolly = 0;
+
+	LogicBlock* held = NULL;
+
 	LogicBlock board;
 	std::vector<Connector> connections;
 	std::vector<Connector> connectionsIn;

@@ -519,6 +519,20 @@ static LogicBlock& createNBitCompareUns(LogicSim& sim, LogicBlock& parent, int n
 		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
 		"less|equal|greater|sigout", std::to_string(n) + "bitCompareUns"));
 
+	/*
+	idea for bitmasking
+	0b01010111 (+087) a
+	0b00110011 (+051) b
+
+	kindof an xor, but directional if that makes sense
+	a,b not,pass -> and 0b00100000 a
+	a,b pass,not -> and 0b01000100 b
+
+	unfortunately I would still have to do it the slow way, 
+	but it does guarantee that an add will never carry,	
+	so i could use a half-adder chain instead of a full-adder chain, using half the cycles
+	*/
+
 	return less;
 }
 

@@ -376,10 +376,10 @@ static LogicBlock& createNBitIsZero(LogicSim& sim, LogicBlock& parent, int n)
 // 2 cycles
 // in: a[], b[]
 // out: out
-static LogicBlock& createNBitCompare(LogicSim& sim, LogicBlock& parent, int n)
+static LogicBlock& createNBitIsEqual(LogicSim& sim, LogicBlock& parent, int n)
 {
 	LogicBlock& comp = parent.add(LogicBlock(arrayToStr("a", n) + "|" + arrayToStr("b", n),
-		"out", std::to_string(n) + "bitCompare"));
+		"out", std::to_string(n) + "bitIsEqual"));
 
 	LogicBlock& nxor = createNBitXor(sim, comp, n);
 	LogicBlock& iszero = createNBitIsZero(sim, comp, n);
@@ -510,15 +510,165 @@ static LogicBlock& createNBitCycleRightM(LogicSim& sim, LogicBlock& parent, int 
 }
 
 
+// ??? cycles
+// in: a[], b[], sigin
+// out: less, equal, greater, sigout
+static LogicBlock& createNBitCompareUns(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& less = parent.add(LogicBlock(
+		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
+		"less|equal|greater|sigout", std::to_string(n) + "bitCompareUns"));
+
+	return less;
+}
+
+// 3 or ??? cycles
+// in: a[], b[], sigin
+// out: less, equal, greater, sigout
+static LogicBlock& createNBitCompare(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& less = parent.add(LogicBlock(
+		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
+		"less|equal|greater|sigout", std::to_string(n) + "bitCompare"));
+
+	LogicBlock& lessUns = createNBitCompareUns(sim, less, n);
+
+	LogicBlock& delay = createNDelay(sim, less, 2);
+	delay.setExpand(false);
+	sim.connect(less, "sigin", delay, "in", inin);
+
+	LogicBlock& equal = createNBitIsEqual(sim, less, n);
+	sim.connect(less, "a[]", equal, "a[]", inin);
+	sim.connect(less, "b[]", equal, "b[]", inin);
+	sim.connect(equal, "out", less, "equal", outout);
+
+	// Positive positive
+	LogicBlock& notPPa = less.add(LogicBlockNot);
+	LogicBlock& notPPb = less.add(LogicBlockNot);
+	LogicBlock& andPP = less.add(LogicBlockAnd);
+	LogicBlock& gatePPa = createNBitGate(sim, less, n);
+	gatePPa.setExpand(false);
+	LogicBlock& gatePPb = createNBitGate(sim, less, n);
+	gatePPb.setExpand(false);
+	LogicBlock& gatePPs = less.add(LogicBlockAnd);
+	notPPa.setPos(15, 15);
+	notPPb.setPos(15, 60);
+	andPP.setPos(15, 105);
+	gatePPs.setPos(15, 150);
+	gatePPa.setPos(100, 15);
+	gatePPb.setPos(100, 100);
+	sim.connect(less, arrayToStr("a", n - 1), notPPa, "in", inin);
+	sim.connect(less, arrayToStr("b", n - 1), notPPb, "in", inin);
+	sim.connect(notPPa, "out", andPP, "a");
+	sim.connect(notPPb, "out", andPP, "b");
+	sim.connect(andPP, "out", gatePPa, "write");
+	sim.connect(andPP, "out", gatePPb, "write");
+	sim.connect(less, "a[]", gatePPa, "in[]", inin);
+	sim.connect(less, "b[]", gatePPb, "in[]", inin);
+	sim.connect(gatePPa, "out[]", lessUns, "a[]");
+	sim.connect(gatePPb, "out[]", lessUns, "b[]");
+	sim.connect(delay, "out", gatePPs, "a");
+	sim.connect(andPP, "out", gatePPs, "b");
+	sim.connect(gatePPs, "out", lessUns, "sigin");
+	sim.connect(lessUns, "less", less, "less", outout);
+	sim.connect(lessUns, "greater", less, "greater", outout);
+	sim.connect(lessUns, "sigout", less, "sigout", outout);
+
+	// Positive negative
+	LogicBlock& notPNa = less.add(LogicBlockNot);
+	LogicBlock& passPNb = less.add(LogicBlockDelay);
+	LogicBlock& andPN = less.add(LogicBlockAnd);
+	LogicBlock& gatePNs = less.add(LogicBlockAnd);
+	notPNa.setPos(15, 15 + 185);
+	passPNb.setPos(15, 60 + 185);
+	andPN.setPos(15, 105 + 185);
+	gatePNs.setPos(15, 150 + 185);
+	sim.connect(less, arrayToStr("a", n - 1), notPNa, "in", inin);
+	sim.connect(less, arrayToStr("b", n - 1), passPNb, "in", inin);
+	sim.connect(notPNa, "out", andPN, "a");
+	sim.connect(passPNb, "out", andPN, "b");
+	sim.connect(delay, "out", gatePNs, "a");
+	sim.connect(andPN, "out", gatePNs, "b");
+	// signal is always gonna be on, this path always returns true for greater
+	sim.connect(gatePNs, "out", less, "greater", outout);
+	// no need to return false for less
+	sim.connect(gatePNs, "out", less, "sigout", outout);
+
+	// Negative positive
+	LogicBlock& passNPa = less.add(LogicBlockDelay);
+	LogicBlock& notNPb = less.add(LogicBlockNot);
+	LogicBlock& andNP = less.add(LogicBlockAnd);
+	LogicBlock& gateNPs = less.add(LogicBlockAnd);
+	passNPa.setPos(15, 15 + 185 * 2);
+	notNPb.setPos(15, 60 + 185 * 2);
+	andNP.setPos(15, 105 + 185 * 2);
+	gateNPs.setPos(15, 150 + 185 * 2);
+	sim.connect(less, arrayToStr("a", n - 1), passNPa, "in", inin);
+	sim.connect(less, arrayToStr("b", n - 1), notNPb, "in", inin);
+	sim.connect(passNPa, "out", andNP, "a");
+	sim.connect(notNPb, "out", andNP, "b");
+	sim.connect(delay, "out", gateNPs, "a");
+	sim.connect(andNP, "out", gateNPs, "b");
+	// signal is always gonna be on, this path always returns true for less
+	sim.connect(gateNPs, "out", less, "less", outout); 
+	// no need to return false for greater
+	sim.connect(gateNPs, "out", less, "sigout", outout);
+
+	// Negative negative
+	// Negate, then compare, then swap outputs
+	// Negation is slow bc of the add1, but this happens to both sides,
+	// so we can skip the add1, only doing the invert bits
+	LogicBlock& passNNa = less.add(LogicBlockDelay);
+	LogicBlock& passNNb = less.add(LogicBlockDelay);
+	LogicBlock& andNN = less.add(LogicBlockAnd);
+	LogicBlock& gateNNa = createNBitGate(sim, less, n);
+	gateNNa.setExpand(false);
+	LogicBlock& gateNNb = createNBitGate(sim, less, n);
+	gateNNb.setExpand(false);
+	LogicBlock& gateNNs = less.add(LogicBlockAnd);
+	passNNa.setPos(15, 15 + 185 * 3);
+	passNNb.setPos(15, 60 + 185 * 3);
+	andNN.setPos(15, 105 + 185 * 3);
+	gateNNs.setPos(15, 150 + 185 * 3);
+	gateNNa.setPos(100, 15 + 185 * 3);
+	gateNNb.setPos(100, 100 + 185 * 3);
+	sim.connect(less, arrayToStr("a", n - 1), passNNa, "in", inin);
+	sim.connect(less, arrayToStr("b", n - 1), passNNb, "in", inin);
+	sim.connect(passNNa, "out", andNN, "a");
+	sim.connect(passNNb, "out", andNN, "b");
+	sim.connect(andNN, "out", gateNNa, "write");
+	sim.connect(andNN, "out", gateNNb, "write");
+	sim.connect(less, "a[]", gateNNa, "in[]", inin);
+	sim.connect(less, "b[]", gateNNb, "in[]", inin);
+
+	LogicBlock& negatea = createNBitInvert(sim, less, n);
+	LogicBlock& negateb = createNBitInvert(sim, less, n);
+	LogicBlock& negatedelay = less.add(LogicBlockDelay);
+	sim.connect(gateNNa, "out[]", negatea, "in[]");
+	sim.connect(gateNNb, "out[]", negateb, "in[]");
+	sim.connect(gateNNs, "out", negatedelay, "in");
+	sim.connect(negatedelay, "out", lessUns, "sigin");
+	sim.connect(negatea, "out[]", lessUns, "a[]");
+	sim.connect(negateb, "out[]", lessUns, "b[]");
+	sim.connect(delay, "out", gateNNs, "a");
+	sim.connect(andNN, "out", gateNNs, "b");
+	// swap less/greater bc of negation
+	sim.connect(lessUns, "greater", less, "less", outout);
+	sim.connect(lessUns, "less", less, "greater", outout);
+	sim.connect(lessUns, "sigout", less, "sigout", outout);
+
+	return less;
+}
+
 
 // 2n*log2(n) + 2 cycles
 // in: a[], b[], sigin
 // out: out[]x2, sigout
-static LogicBlock& createNBitMulPP(LogicSim& sim, LogicBlock& parent, int n)
+static LogicBlock& createNBitMulUns(LogicSim& sim, LogicBlock& parent, int n)
 {
 	LogicBlock& mul = parent.add(LogicBlock(
 		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin", 
-		arrayToStr("out", 2 * n) + "|sigout", std::to_string(n) + "bitMulPP"));
+		arrayToStr("out", 2 * n) + "|sigout", std::to_string(n) + "bitMulUns"));
 
 	LogicBlock& delay = createNDelay(sim, mul, 2);
 	delay.setExpand(false);
@@ -691,7 +841,7 @@ static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 		arrayToStr("out", n * 2) + "|sigout",
 		std::to_string(n) + "bitMul"));
 
-	LogicBlock& mulPP = createNBitMulPP(sim, mul, n);
+	LogicBlock& mulPP = createNBitMulUns(sim, mul, n);
 	mulPP.setExpand(false);
 	mulPP.setPos(300, 15);
 	LogicBlock& mulPN = createNBitMulPN(sim, mul, n);
@@ -1007,7 +1157,7 @@ static LogicBlock& createAddrMemory(LogicSim& sim, LogicBlock& parent, int addrB
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& mem = createNBitMemory(sim, addr, bitsPerByte);
-		LogicBlock& cmp = createNBitCompare(sim, addr, addrBits);
+		LogicBlock& cmp = createNBitIsEqual(sim, addr, addrBits);
 		LogicBlock& num = createNBitNumber(sim, addr, addrBits, i);
 		LogicBlock& gate = createNBitGate(sim, addr, 2);
 		LogicBlock& readdelay = createNDelay(sim, addr, 4);
@@ -1085,7 +1235,7 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 	for (int i = 0; i < n; ++i)
 	{
 		LogicBlock& mem = createNBitROM(sim, addr, bitsPerByte, data[i]);
-		LogicBlock& cmp = createNBitCompare(sim, addr, addrBits);
+		LogicBlock& cmp = createNBitIsEqual(sim, addr, addrBits);
 		LogicBlock& num = createNBitNumber(sim, addr, addrBits, i);
 		LogicBlock& tempand = addr.add(LogicBlockAnd);
 		LogicBlock& delay = createNDelay(sim, addr, 2);

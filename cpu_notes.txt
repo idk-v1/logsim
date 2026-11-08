@@ -1,0 +1,47 @@
+instructions:
+nop            []                   []
+jump           [rom addr]           []
+jumpif0        [rom addr, regA]     []
+jumpifoverflow [rom addr, overflow] []
+add            [regA, regB]         [regA, overflow]
+subtract       [regA, regB]         [regA, overflow]
+increment      [regA]               [regA, overflow]
+decrement      [regA]               [regA, overflow]
+multiply       [regA, regB]         [regA (low), regB (high)]
+negate         [regA]               [regA]
+lshift         [regA]               [regA]
+rshift         [regA]               [regA]
+rshift(signed) [regA]               [regA]
+lcycle         [regA]               [regA]
+rcycle         [regA]               [regA]
+xor            [regA, regB]         [regA]
+and            [regA, regB]         [regA]
+or             [regA, regB]         [regA]
+invert         [regA]               [regA]
+cmp            [regA, regB]         [regA]
+iszero         [regA]               [regA]
+move           [mem addr src]       [mem addr dest]
+loadregA       [mem addr]           [regA]
+loadregB       [mem addr]           [regB]
+storeregA      [regA]               [out mem addr]
+storeregB      [regB]               [out mem addr]
+
+only 2 registers are needed for all math operations including both input and output
+1 is needed for program counter
+1 memory cell is for overflow
+more registers can be created for general purpose use
+
+- all memory cells are the same type, so you could technically use any memory cell as a register.
+- registers are supposed to be fast, so mine need to be fast.
+- addressing a memory cell adds 3 extra cycles to read and write, 
+   so special hardware for accessing specific registers cuts off those extra 3 cycles.
+- and some operations need to access 2 values at once, and the memory line doesn't support that,
+   so fixed inputs and outputs are needed
+- maybe 3 cycles isnt bad compared to the cost of most operations, 
+   so addressing could be better (fewer instructions, plus only 1 move instruction).
+   still would need a fixed input/output for operations (fake register bc they're all the same)
+
+division will be software only bc there is no parallel or efficient algorithm for it in hardware
+and it is just so fucking slow
+it is n(int size) (less-thans(subtraction) and subtraction and write to memory cell)
+maybe I should make hardware division just because it would be slightly faster, but still inefficient

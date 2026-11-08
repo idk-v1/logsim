@@ -15,90 +15,14 @@ int main()
 
 	LogicSim sim;
 
-	LogicBlock& edita = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	edita.setPos(15, 15);
-	LogicBlock& editb = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	editb.setPos(15, 250);
-
-	LogicBlock& mul = createNBitMul(sim, sim.getBoard(), 8);
-	mul.setPos(250, 15);
-	sim.connect(edita, "out[]", mul, "a[]");
-	sim.connect(editb, "out[]", mul, "b[]");
-
-	sim.connect(edita, "sigout", mul, "sigin");
-	sim.connect(editb, "sigout", mul, "sigin");
-	
-
-	// Addressable memory
-	//LogicBlock& editaddr = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	//editaddr.setPos(15, 15);
-	//LogicBlock& editdata = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	//editdata.setPos(15, 250);
-	//
-	//LogicBlock& mem = createMemoryAddr(sim, sim.getBoard(), 8, 8, 8);
-	//mem.setPos(300, 15);
-	//
-	//
-	//LogicBlock& read = sim.add(LogicBlockToggle);
-	//read.setPos(15, 500);
-	//LogicBlock& write = sim.add(LogicBlockToggle);
-	//write.setPos(15, 525);
-	//
-	//sim.connect(editaddr, "out[]", mem, "addr[]");
-	//sim.connect(editdata, "out[]", mem, "data[]");
-	//sim.connect(write, "out", mem, "write");
-	//sim.connect(read, "out", mem, "read");
-
-	// Add 1 loop
-	//int n = 16;
-	//LogicBlock& add = createNBitAdd1(sim, sim.getBoard(), n);
-	//add.setPos(100, 250);
-	//add.setExpand(false);
-	//
-	//LogicBlock& mem = createNBitMemory(sim, sim.getBoard(), n);
-	//mem.setPos(100, 15);
-	//mem.setExpand(false);
-	//
-	//LogicBlock& button = sim.add(LogicBlockButton);
-	//button.setPos(15, 15);
-	//LogicBlock& toggle = sim.add(LogicBlockToggle);
-	//toggle.setPos(15, 50);
-	//
-	//sim.connect(mem, "out[]", add, "a[]");
-	//sim.connect(add, "out[]", mem, "data[]");
-	//sim.connect(add, "sigout", mem, "write");
-	//
-	//sim.connect(mem, "sigout", add, "sigin");
-	//sim.connect(button, "out", add, "sigin");
-	//sim.connect(toggle, "out", mem, "read");
-
-
-	// Subtract
-	//int n = 32;
-	//LogicBlock& a = createNBitNumber(sim, sim.getBoard(), n, 54321);
-	//LogicBlock& b = createNBitNumber(sim, sim.getBoard(), n, 12345);
-	//LogicBlock& sub = createNBitSub(sim, sim.getBoard(), n);
-	//LogicBlock& out = createNBitOutput(sim, sim.getBoard(), n);
-	//LogicBlock& power = sim.add(LogicBlockOn);
-	//a.setPos(15, 50);
-	//b.setPos(15, 150);
-	//sub.setPos(100, 50);
-	//out.setPos(1000, 50);
-	//power.setPos(15, 350);
-	//
-	//sim.connect(a, "out[]", sub, "a[]");
-	//sim.connect(b, "out[]", sub, "b[]");
-	//
-	//sim.connect(power, "out", sub, "sigin");
-	//
-	//LogicBlock& shift = createNBitShiftM(sim, sim.getBoard(), n, 1);
-	//sim.connect(sub, "out[]", shift, "in[]");
-	//sim.connect(shift, "out[]", out, "in[]");
-	//shift.setPos(800, 50);
-	//
-	//LogicBlock& iszero = createNBitIsZero(sim, sim.getBoard(), n);
-	//sim.connect(sub, "out[]", iszero, "in[]");
-	//iszero.setPos(1000, 250);
+	int64_t data[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+	LogicBlock& rom = createAddrROM(sim, sim.getBoard(), 8, 8, 8, data);
+	LogicBlock& edit = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
+	LogicBlock& read = sim.add(LogicBlockToggle);
+	rom.setPos(300, 15);
+	read.setPos(0, 300);
+	sim.connect(edit, "out[]", rom, "addr[]");
+	sim.connect(read, "out", rom, "read");
 
 	sim.recalc();
 
@@ -141,22 +65,8 @@ int main()
 
 		sim.draw(surface);
 
-		drawNumberLabel(surface, edita, 8);
-		drawNumberLabel(surface, editb, 8);
-		drawNumberLabel(surface, mul, 16);
 
-		// Addressable memory
-		//drawNumberLabel(surface, editaddr, 8);
-		//drawNumberLabel(surface, editdata, 8);
-		//drawNumberLabel(surface, mem, 8);
 
-		// Add 1 loop
-		//drawNumberLabel(surface, mem, n);
-		// Subtract
-		//drawNumberLabel(surface, a, n);
-		//drawNumberLabel(surface, b, n);
-		//drawNumberLabel(surface, out, n);
-		
 		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %d", ticks);
 
 		SDL_UpdateWindowSurface(window);
@@ -166,8 +76,7 @@ int main()
 			sim.tick(mousex, mousey, click);
 			++ticks;
 		}
-		//if (mem.output["sigout"].data)
-		//	pause = true;
+
 		SDL_Delay(stepTime);
 	}
 	SDL_DestroyWindow(window);

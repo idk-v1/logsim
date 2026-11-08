@@ -611,7 +611,7 @@ static LogicBlock& createNBitDiff(LogicSim& sim, LogicBlock& parent, int n)
 	return diff;
 }
 
-// ??? cycles
+// 8 cycles
 // in: a[], b[], sigin
 // out: less, equal, greater, sigout
 static LogicBlock& createNBitCompareUns(LogicSim& sim, LogicBlock& parent, int n)
@@ -620,53 +620,116 @@ static LogicBlock& createNBitCompareUns(LogicSim& sim, LogicBlock& parent, int n
 		arrayToStr("a", n) + "|" + arrayToStr("b", n) + "|sigin",
 		"less|equal|greater|sigout", std::to_string(n) + "bitCompareUns"));
 
+	LogicBlock& sigdelay = createNDelay(sim, less, 8);
+	sim.connect(less, "sigin", sigdelay, "in", inin);
+	sim.connect(sigdelay, "out", less, "sigout", outout);
+
+	LogicBlock& diff = createNBitDiff(sim, less, n);
+	LogicBlock& iszeroA = createNBitIsZero(sim, less, n);
+	LogicBlock& passA = less.add(LogicBlockDelay);
+	LogicBlock& notA = less.add(LogicBlockNot);
+	LogicBlock& gateA = createNBitGate(sim, less, 2);
+	LogicBlock& isequal = createNBitIsEqual(sim, less, n);
+	LogicBlock& isequalinv = less.add(LogicBlockNot);
+
+	sim.connect(less, "a[]", diff, "a[]", inin);
+	sim.connect(less, "b[]", diff, "b[]", inin);
+
+	// cancel less/greater if equal
+	sim.connect(less, "a[]", isequal, "a[]", inin);
+	sim.connect(less, "b[]", isequal, "b[]", inin);
+	sim.connect(isequal, "out", isequalinv, "in");
+	sim.connect(isequalinv, "out", gateA, "write");
+	sim.connect(gateA, "out[0]", less, "less", outout);
+	sim.connect(gateA, "out[1]", less, "greater", outout);
+	sim.connect(isequal, "out", less, "equal", outout);
+
+	std::vector<LogicBlock*> notsA;
+	std::vector<LogicBlock*> notsB;
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& tempA0 = less.add(LogicBlockNot);
+		LogicBlock& tempA1 = less.add(LogicBlockNot);
+		tempA0.setPos(15, 15 + i * 40);
+		tempA1.setPos(75, 15 + i * 40);
+		sim.connect(diff, arrayToStr("a", i), tempA0, "in");
+		sim.connect(tempA0, "out", tempA1, "in");
+		sim.connect(tempA1, "out", iszeroA, arrayToStr("in", i));
+		notsA.push_back(&tempA0);
+		notsA.push_back(&tempA1);
+
+		LogicBlock& tempB0 = less.add(LogicBlockNot);
+		LogicBlock& tempB1 = less.add(LogicBlockNot);
+		tempB0.setPos(215, 15 + i * 40);
+		tempB1.setPos(275, 15 + i * 40);
+		sim.connect(diff, arrayToStr("b", i), tempB0, "in");
+		sim.connect(tempB0, "out", tempB1, "in");
+		notsB.push_back(&tempB0);
+		notsB.push_back(&tempB1);
+	}
+
+	for (int i = n - 1; i >= 0; --i)
+		for (int ii = i - 1; ii >= 0; --ii)
+		{
+			sim.connect(*notsA[i * 2 + 1], "out", *notsA[ii * 2 + 1], "in");
+			sim.connect(*notsA[i * 2 + 1], "out", *notsB[ii * 2 + 1], "in");
+			sim.connect(*notsB[i * 2 + 1], "out", *notsA[ii * 2 + 1], "in");
+			sim.connect(*notsB[i * 2 + 1], "out", *notsB[ii * 2 + 1], "in");
+		}
+
+	// if a is zero, b is non zero, so b < a
+	sim.connect(iszeroA, "out", notA, "in");
+	sim.connect(notA, "out", gateA, "in[0]");
+	sim.connect(iszeroA, "out", passA, "in");
+	sim.connect(passA, "out", gateA, "in[1]");
+
 	/*
-	i would rather not use subtraction bc very slow 
-	
-	idea for bitmasking
-	0b01010111 (+087) a
-	0b00110011 (+051) b
-
-	kindof an xor, but directional if that makes sense
-	a,b not,pass -> and 0b00100000 a
-	a,b pass,not -> and 0b01000100 b
-	                    0b10111011 inv
-						0b10111100 add1
-
-	unfortunately I would still have to do it the slow way, 
-	but it does guarantee that an add will never carry,	
-	so i could use a half-adder chain instead of a full-adder chain, using half the cycles
-	but negating loses this obv, so its not useful for subtraction
-
-	or
-
-	find highest bit of above bitmasking approach
-	0b01100100
-	in -> not1 -> not2 -> out, (all lower not2s)
-
-	in, not1, not2, out
-	 0     1     0    0
-	 1     0     1    1
-	 1     0     1    0
-	 0     1     0    0
-	 0     1     0    0
-	 1     0     1    0
-	 0     1     0    0
-	 0     1     0    0
-
-	but now im also stuck
-	
-	0b00100000 a -> 0b00100000 a
-	0b01000100 b -> 0b01000000 b
-
 	find highest bit could be modified to use the directional xor from above
-	unknown how many cycles (4 + this)
+
+	  a
+	3 0
+	2 1
+	1 1
+	0 0
+	
+	  b
+	3 0
+	2 1
+	1 0
+	0 1
+	
+	bitDiff(1110, 0101) -> (0001, 1010)
+	
+	a -> not -> not -> a
+	0 ->   1 ->   0 -> 0
+	0 ->   1 ->   0 -> 0
+	0 ->   1 ->   0 -> 0
+	1 ->   0 ->   1 -> 0
+	
+	
+	b -> not -> not -> b
+	1 ->   0 ->   1 -> 1
+	0 ->   1 ->   0 -> 0
+	1 ->   0 ->   1 -> 0
+	0 ->   1 ->   0 -> 0
+	
+	basically gethighestbit, but the cancelling is also wired to the other output
+	
+	b is non-zero, so it is the lowest, false for less, true for greater
+	if a is non-zero, it is lowest, true for less, false for greater
+	need a way to block output if is equal
+	
+	above takes 5 cycles
+	+ iszero + (not,pass) + gate for output
+	isequal takes 2 cycles
+	
+	total = 5 + 1 + 1 + 1 = 8
 	*/
 
 	return less;
 }
 
-// 3 or ??? cycles
+// 10(pp) or 3(pn) or 11(nn) cycles
 // in: a[], b[], sigin
 // out: less, equal, greater, sigout
 static LogicBlock& createNBitCompare(LogicSim& sim, LogicBlock& parent, int n)
@@ -676,6 +739,8 @@ static LogicBlock& createNBitCompare(LogicSim& sim, LogicBlock& parent, int n)
 		"less|equal|greater|sigout", std::to_string(n) + "bitCompare"));
 
 	LogicBlock& lessUns = createNBitCompareUns(sim, less, n);
+	lessUns.setExpand(false);
+	lessUns.setPos(200, 0);
 
 	LogicBlock& delay = createNDelay(sim, less, 2);
 	delay.setExpand(false);
@@ -687,24 +752,20 @@ static LogicBlock& createNBitCompare(LogicSim& sim, LogicBlock& parent, int n)
 	sim.connect(equal, "out", less, "equal", outout);
 
 	// Positive positive
-	LogicBlock& notPPa = less.add(LogicBlockNot);
-	LogicBlock& notPPb = less.add(LogicBlockNot);
-	LogicBlock& andPP = less.add(LogicBlockAnd);
+	// positive positive and negative negative are going to be much slower than mixed signs,
+	// so a 1 cycles speed up is good
+	LogicBlock& andPP = less.add(LogicBlockNor);
 	LogicBlock& gatePPa = createNBitGate(sim, less, n);
 	gatePPa.setExpand(false);
 	LogicBlock& gatePPb = createNBitGate(sim, less, n);
 	gatePPb.setExpand(false);
 	LogicBlock& gatePPs = less.add(LogicBlockAnd);
-	notPPa.setPos(15, 15);
-	notPPb.setPos(15, 60);
 	andPP.setPos(15, 105);
 	gatePPs.setPos(15, 150);
 	gatePPa.setPos(100, 15);
 	gatePPb.setPos(100, 100);
-	sim.connect(less, arrayToStr("a", n - 1), notPPa, "in", inin);
-	sim.connect(less, arrayToStr("b", n - 1), notPPb, "in", inin);
-	sim.connect(notPPa, "out", andPP, "a");
-	sim.connect(notPPb, "out", andPP, "b");
+	sim.connect(less, arrayToStr("a", n - 1), andPP, "a", inin);
+	sim.connect(less, arrayToStr("b", n - 1), andPP, "b", inin);
 	sim.connect(andPP, "out", gatePPa, "write");
 	sim.connect(andPP, "out", gatePPb, "write");
 	sim.connect(less, "a[]", gatePPa, "in[]", inin);
@@ -762,44 +823,45 @@ static LogicBlock& createNBitCompare(LogicSim& sim, LogicBlock& parent, int n)
 	// Negate, then compare, then swap outputs
 	// Negation is slow bc of the add1, but this happens to both sides,
 	// so we can skip the add1, only doing the invert bits
-	LogicBlock& passNNa = less.add(LogicBlockDelay);
-	LogicBlock& passNNb = less.add(LogicBlockDelay);
+
+	// also here is much slower than mixed signs, so skip the 1 cycle delay before the and
+	LogicBlock& lessUnsNN = createNBitCompareUns(sim, less, n);
+	lessUnsNN.setExpand(false);
+	lessUnsNN.setPos(200, 0);
+
 	LogicBlock& andNN = less.add(LogicBlockAnd);
 	LogicBlock& gateNNa = createNBitGate(sim, less, n);
 	gateNNa.setExpand(false);
 	LogicBlock& gateNNb = createNBitGate(sim, less, n);
 	gateNNb.setExpand(false);
 	LogicBlock& gateNNs = less.add(LogicBlockAnd);
-	passNNa.setPos(15, 15 + 185 * 3);
-	passNNb.setPos(15, 60 + 185 * 3);
+	LogicBlock& negatea = createNBitInvert(sim, less, n);
+	LogicBlock& negateb = createNBitInvert(sim, less, n);
+	LogicBlock& negatedelay = less.add(LogicBlockDelay);
 	andNN.setPos(15, 105 + 185 * 3);
 	gateNNs.setPos(15, 150 + 185 * 3);
 	gateNNa.setPos(100, 15 + 185 * 3);
 	gateNNb.setPos(100, 100 + 185 * 3);
-	sim.connect(less, arrayToStr("a", n - 1), passNNa, "in", inin);
-	sim.connect(less, arrayToStr("b", n - 1), passNNb, "in", inin);
-	sim.connect(passNNa, "out", andNN, "a");
-	sim.connect(passNNb, "out", andNN, "b");
+	sim.connect(less, arrayToStr("a", n - 1), andNN, "a", inin);
+	sim.connect(less, arrayToStr("b", n - 1), andNN, "b", inin);
 	sim.connect(andNN, "out", gateNNa, "write");
 	sim.connect(andNN, "out", gateNNb, "write");
-	sim.connect(less, "a[]", gateNNa, "in[]", inin);
-	sim.connect(less, "b[]", gateNNb, "in[]", inin);
 
-	LogicBlock& negatea = createNBitInvert(sim, less, n);
-	LogicBlock& negateb = createNBitInvert(sim, less, n);
-	LogicBlock& negatedelay = less.add(LogicBlockDelay);
-	sim.connect(gateNNa, "out[]", negatea, "in[]");
-	sim.connect(gateNNb, "out[]", negateb, "in[]");
+	sim.connect(less, "a[]", negatea, "in[]", inin);
+	sim.connect(less, "b[]", negateb, "in[]", inin);
+
+	sim.connect(negatea, "out[]", gateNNa, "in[]");
+	sim.connect(negateb, "out[]", gateNNb, "in[]");
 	sim.connect(gateNNs, "out", negatedelay, "in");
-	sim.connect(negatedelay, "out", lessUns, "sigin");
-	sim.connect(negatea, "out[]", lessUns, "a[]");
-	sim.connect(negateb, "out[]", lessUns, "b[]");
+	sim.connect(negatedelay, "out", lessUnsNN, "sigin");
+	sim.connect(gateNNa, "out[]", lessUnsNN, "a[]");
+	sim.connect(gateNNb, "out[]", lessUnsNN, "b[]");
 	sim.connect(delay, "out", gateNNs, "a");
 	sim.connect(andNN, "out", gateNNs, "b");
 	// swap less/greater bc of negation
-	sim.connect(lessUns, "greater", less, "less", outout);
-	sim.connect(lessUns, "less", less, "greater", outout);
-	sim.connect(lessUns, "sigout", less, "sigout", outout);
+	sim.connect(lessUnsNN, "greater", less, "less", outout);
+	sim.connect(lessUnsNN, "less", less, "greater", outout);
+	sim.connect(lessUnsNN, "sigout", less, "sigout", outout);
 
 	return less;
 }
@@ -975,7 +1037,7 @@ static LogicBlock& createNBitMulPN(LogicSim& sim, LogicBlock& parent, int n)
 }
 
 
-// 2n*log2(n) + 2 or 2n*(log2(n) + 1) + 2 or 2n*log2(n) + n + 3 cycles
+// 2n*log2(n) + 4(pp) or 2n*(log2(n) + 1) + 5(pn) or 2n*log2(n) + n + 5(nn) cycles
 // in: a[], b[], sigin
 // out: out[]x2, sigout
 static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
@@ -1003,24 +1065,18 @@ static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 	sim.connect(mul, "sigin", delay, "in", inin);
 
 	// Positive * positive
-	LogicBlock& notPPa = mul.add(LogicBlockNot);
-	LogicBlock& notPPb = mul.add(LogicBlockNot);
-	LogicBlock& andPP = mul.add(LogicBlockAnd);
+	LogicBlock& andPP = mul.add(LogicBlockNor);
 	LogicBlock& gatePPa = createNBitGate(sim, mul, n);
 	gatePPa.setExpand(false);
 	LogicBlock& gatePPb = createNBitGate(sim, mul, n);
 	gatePPb.setExpand(false);
 	LogicBlock& gatePPs = mul.add(LogicBlockAnd);
-	notPPa.setPos(15, 15);
-	notPPb.setPos(15, 60);
 	andPP.setPos(15, 105);
 	gatePPs.setPos(15, 150);
 	gatePPa.setPos(100, 15);
 	gatePPb.setPos(100, 100);
-	sim.connect(mul, arrayToStr("a", n - 1), notPPa, "in", inin);
-	sim.connect(mul, arrayToStr("b", n - 1), notPPb, "in", inin);
-	sim.connect(notPPa, "out", andPP, "a");
-	sim.connect(notPPb, "out", andPP, "b");
+	sim.connect(mul, arrayToStr("a", n - 1), andPP, "a", inin);
+	sim.connect(mul, arrayToStr("b", n - 1), andPP, "b", inin);
 	sim.connect(andPP, "out", gatePPa, "write");
 	sim.connect(andPP, "out", gatePPb, "write");
 	sim.connect(mul, "a[]", gatePPa, "in[]", inin);
@@ -1096,24 +1152,18 @@ static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 	sim.connect(mulPN, "sigout", mul, "sigout", outout);
 
 	// Negative * negative
-	LogicBlock& passNNa = mul.add(LogicBlockDelay);
-	LogicBlock& passNNb = mul.add(LogicBlockDelay);
 	LogicBlock& andNN = mul.add(LogicBlockAnd);
 	LogicBlock& gateNNa = createNBitGate(sim, mul, n);
 	gateNNa.setExpand(false);
 	LogicBlock& gateNNb = createNBitGate(sim, mul, n);
 	gateNNb.setExpand(false);
 	LogicBlock& gateNNs = mul.add(LogicBlockAnd);
-	passNNa.setPos(15, 15 + 185 * 3);
-	passNNb.setPos(15, 60 + 185 * 3);
 	andNN.setPos(15, 105 + 185 * 3);
 	gateNNs.setPos(15, 150 + 185 * 3);
 	gateNNa.setPos(100, 15 + 185 * 3);
 	gateNNb.setPos(100, 100 + 185 * 3);
-	sim.connect(mul, arrayToStr("a", n - 1), passNNa, "in", inin);
-	sim.connect(mul, arrayToStr("b", n - 1), passNNb, "in", inin);
-	sim.connect(passNNa, "out", andNN, "a");
-	sim.connect(passNNb, "out", andNN, "b");
+	sim.connect(mul, arrayToStr("a", n - 1), andNN, "in", inin);
+	sim.connect(mul, arrayToStr("b", n - 1), andNN, "in", inin);
 	sim.connect(andNN, "out", gateNNa, "write");
 	sim.connect(andNN, "out", gateNNb, "write");
 	sim.connect(mul, "a[]", gateNNa, "in[]", inin);

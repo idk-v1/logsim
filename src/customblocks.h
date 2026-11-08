@@ -568,6 +568,49 @@ static LogicBlock& createNBitLowestBit(LogicSim& sim, LogicBlock& parent, int n)
 	return high;
 }
 
+
+// 2 cycles
+// in: a[], b[]
+// out: a[], b[]
+static LogicBlock& createNBitDiff(LogicSim& sim, LogicBlock& parent, int n)
+{
+	// returns the missing bits of each input
+	// a = 0b01010111 (+087)
+	// b = 0b00110011 (+051)
+	// kindof an xor, but it tells you what side the on came from
+	// a, b -> not, pass -> and -> 0b00100000 a
+	// a, b -> pass, not -> and -> 0b01000100 b
+
+	LogicBlock& diff = parent.add(LogicBlock(
+		arrayToStr("a", n) + "|" + arrayToStr("b", n), 
+		arrayToStr("a", n) + "|" + arrayToStr("b", n),
+		std::to_string(n) + "bitDiff"));
+
+	for (int i = 0; i < n; ++i)
+	{
+		LogicBlock& passA = diff.add(LogicBlockDelay);
+		LogicBlock& passB = diff.add(LogicBlockDelay);
+		LogicBlock& notA = diff.add(LogicBlockNot);
+		LogicBlock& notB = diff.add(LogicBlockNot);
+		LogicBlock& andA = diff.add(LogicBlockAnd);
+		LogicBlock& andB = diff.add(LogicBlockAnd);
+
+		sim.connect(diff, arrayToStr("a", i), notA, "in", inin);
+		sim.connect(diff, arrayToStr("b", i), passA, "in", inin);
+		sim.connect(notA, "out", andA, "a");
+		sim.connect(passA, "out", andA, "b");
+		sim.connect(andA, "out", diff, arrayToStr("a", i), outout);
+
+		sim.connect(diff, arrayToStr("a", i), passB, "in", inin);
+		sim.connect(diff, arrayToStr("b", i), notB, "in", inin);
+		sim.connect(passB, "out", andB, "a");
+		sim.connect(notB, "out", andB, "b");
+		sim.connect(andB, "out", diff, arrayToStr("b", i), outout);
+	}
+
+	return diff;
+}
+
 // ??? cycles
 // in: a[], b[], sigin
 // out: less, equal, greater, sigout

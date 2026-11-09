@@ -95,8 +95,6 @@ void Connector::draw(SDL_Surface* surface)
 				XYCoord p1 = b.getConnectionPos(b.getConnectionIndex(bIndexed, bIn), bIn);
 				drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y, 
 					(*aport)[aIndexed].data ? on : off);
-				if (p0.x < 0 || p0.y < 0 || p1.x < 0 || p1.y < 0)
-					printf("bad wire\n");
 			}
 			else
 				break;

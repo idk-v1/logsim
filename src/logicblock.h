@@ -74,7 +74,8 @@ struct LogicBlock
 	LogicBlock(const std::string& label);
 	LogicBlock(const std::string& in, const std::string& out, const std::string& label);
 
-	void tick(int mousex, int mousey, int oldmousex, int oldmousey, 
+	void tick();
+	void interact(int mousex, int mousey, int oldmousex, int oldmousey,
 		bool click, bool oldclick, bool& found, LogicBlock** held);
 
 	LogicBlock& add(const LogicBlock& block);
@@ -87,7 +88,7 @@ struct LogicBlock
 
 	void recalc(int px, int py, bool expanded);
 
-	void draw(SDL_Surface* surface);
+	void draw(SDL_Surface* surface, LogicBlock* held);
 
 	XYCoord getConnectionPos(int index, bool isInput);
 

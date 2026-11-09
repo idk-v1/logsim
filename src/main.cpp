@@ -120,7 +120,8 @@ int main()
 
 		if (!pause)
 		{
-			sim.tick(mousex, mousey, oldmousex, oldmousey, click, oldclick);
+			sim.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick);
+			sim.tick();
 			sim.recalc();
 			++ticks;
 		}

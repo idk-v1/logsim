@@ -45,7 +45,7 @@ LogicBlock& LogicSim::add(const LogicBlock& block)
 	return board.add(block);
 }
 
-void LogicSim::tick(int mousex, int mousey, int oldmousex, int oldmousey, bool click, bool oldclick)
+void LogicSim::tick()
 {
 	board.resetWrittenTo();
 
@@ -55,12 +55,7 @@ void LogicSim::tick(int mousex, int mousey, int oldmousex, int oldmousey, bool c
 	for (auto& c : connectionsIn)
 		c.tick();
 
-	bool found = false;
-	board.tick(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, &held);
-	if (found || needsRecalc)
-		recalc();
-	else
-		held = NULL;
+	board.tick();
 
 	for (auto& c : connectionsInOut)
 		c.tick();
@@ -69,9 +64,19 @@ void LogicSim::tick(int mousex, int mousey, int oldmousex, int oldmousey, bool c
 		c.tick();
 }
 
+void LogicSim::interact(int mousex, int mousey, int oldmousex, int oldmousey, bool click, bool oldclick)
+{
+	bool found = false;
+	board.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, &held);
+	if (found || needsRecalc)
+		recalc();
+	else
+		held = NULL;
+}
+
 void LogicSim::draw(SDL_Surface* surface)
 {
-	board.draw(surface);
+	board.draw(surface, held);
 
 	for (auto& c : connections)
 		c.draw(surface);

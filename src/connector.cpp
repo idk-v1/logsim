@@ -2,6 +2,7 @@
 
 #include "../graphics/graphics.h"
 #include "../graphics/bulletinV1_font.h"
+#include "logicsim.h"
 
 Connector::Connector(LogicBlock& a, const std::string& aIndex, 
 	LogicBlock& b, const std::string& bIndex, bool aIn, bool bIn) :
@@ -94,6 +95,8 @@ void Connector::draw(SDL_Surface* surface)
 				XYCoord p1 = b.getConnectionPos(b.getConnectionIndex(bIndexed, bIn), bIn);
 				drawLineFromPoints(surface, p0.x, p0.y, p1.x, p1.y, 
 					(*aport)[aIndexed].data ? on : off);
+				if (p0.x < 0 || p0.y < 0 || p1.x < 0 || p1.y < 0)
+					printf("bad wire\n");
 			}
 			else
 				break;

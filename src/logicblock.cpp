@@ -109,12 +109,8 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 	this->label = label;
 }
 
-void LogicBlock::tick(int mousex, int mousey, int oldmousex, int oldmousey, 
-	bool click, bool oldclick, bool& found, LogicBlock** held)
+void LogicBlock::tick()
 {
-	bool clicked = (expanded && mousex >= bx && mousex <= bx + w && mousey >= by + fonth &&
-		mousey <= by + h && click && !oldclick);
-
 	if (label == "and")
 		output["out"].data = input["a"].data && input["b"].data;
 	else if (label == "or")
@@ -131,21 +127,18 @@ void LogicBlock::tick(int mousex, int mousey, int oldmousex, int oldmousey,
 		output["out"].data = !input["in"].data;
 	else if (label == "delay")
 		output["out"].data = input["in"].data;
-	else if (label == "toggle")
-	{
-		if (clicked)
-			output["out"].data = !output["out"].data;
-	}
-	else if (label == "button")
-	{
-		if (clicked)
-			output["out"].data = true;
-		else
-			output["out"].data = false;
-	}
 	else
 		for (auto& b : blocks)
-			b.tick(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, held);
+			b.tick();
+}
+
+void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, bool click, bool oldclick, bool& found, LogicBlock** held)
+{
+	for (auto& b : blocks)
+		b.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, held);
+
+	bool clicked = (expanded && mousex >= bx && mousex <= bx + w && mousey >= by + fonth &&
+		mousey <= by + h && click && !oldclick);
 
 	if (expanded && click)
 	{
@@ -168,6 +161,19 @@ void LogicBlock::tick(int mousex, int mousey, int oldmousex, int oldmousey,
 			found = true;
 			*held = this;
 		}
+	}
+
+	if (label == "toggle")
+	{
+		if (clicked)
+			output["out"].data = !output["out"].data;
+	}
+	else if (label == "button")
+	{
+		if (clicked)
+			output["out"].data = true;
+		else
+			output["out"].data = false;
 	}
 }
 
@@ -213,15 +219,12 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		return;
 	}
 
-	expanded = true;
+	this->expanded = true;
 
 	bx = px + x * posMul + fonth;
 	by = py + y * posMul + fontw;
-	if (expand)
-	{
-		for (auto& b : blocks)
-			b.recalc(bx, by, expand);
-	}
+	for (auto& b : blocks)
+		b.recalc(bx, by, expand);
 
 	size_t maxLabel = 1;
 	auto in = input.begin();
@@ -264,7 +267,7 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 	h += fonth;
 }
 
-void LogicBlock::draw(SDL_Surface* surface)
+void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 {
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
@@ -302,9 +305,10 @@ void LogicBlock::draw(SDL_Surface* surface)
 
 	if (expand)
 		for (auto& b : blocks)
-			b.draw(surface);
+			b.draw(surface, held);
 
-	drawRectOut(surface, bx - 1, by - 1, w + 2, h + 2, 1, rgb(127, 127, 127));
+	drawRectOut(surface, bx - 1, by - 1, w + 2, h + 2, 1, 
+		held == this ? rgb(127, 255, 31) : rgb(127, 127, 127));
 }
 
 XYCoord LogicBlock::getConnectionPos(int index, bool isInput)

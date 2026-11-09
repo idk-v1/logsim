@@ -98,6 +98,8 @@ struct LogicBlock
 
 	bool isHidden() const;
 
+	XYCoord getSize() const;
+
 	std::map<std::string, WriteData, strCmpWithArray> input;
 	std::map<std::string, WriteData, strCmpWithArray> output;
 	std::string label;

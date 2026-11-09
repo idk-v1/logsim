@@ -366,6 +366,11 @@ bool LogicBlock::isHidden() const
 	return !expanded;
 }
 
+XYCoord LogicBlock::getSize() const
+{
+	return XYCoord(w, h);
+}
+
 void LogicBlock::setFontSize(int w, int h, int fontsize, int posMul)
 {
 	fontw = w;

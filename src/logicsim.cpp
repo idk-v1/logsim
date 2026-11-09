@@ -95,17 +95,19 @@ void LogicSim::setZoom(int scale, int screenw, int screenh)
 		// find coords on board in the center of the screen
 		int centerx = screenw / 2 - scrollx;
 		int centery = screenh / 2 - scrolly;
-		float scaleDiff = (scale ? 2 * scale : 1) / (float)(this->scale ? 2 * this->scale : 1);
+		float scaleDiff = (scale ? scale : 0.5f) / (float)(this->scale ? this->scale : 0.5f);
+		float cxf = centerx / (float)board.getSize().x;
+		float cyf = centery / (float)board.getSize().y;
 		scrollx -= centerx;
 		scrolly -= centery;
-		int oldx = scrollx;
-		int oldy = scrolly;
 		scrollx *= scaleDiff;
 		scrolly *= scaleDiff;
-		scrollx += oldx - scrollx + centerx / scaleDiff;
-		scrolly += oldy - scrolly + centery / scaleDiff;
+		// still zoom out has a problem for some reason idk
+		// but this is 100% accurate for zooming in
+		scrollx += cxf * board.getSize().x * scaleDiff - screenw / 2;
+		scrolly += cyf * board.getSize().y * scaleDiff - screenh / 2;
 
-		printf("%f\n", scaleDiff);
+		printf("%f (%d, %d)\n", scaleDiff, scrollx, scrolly);
 		this->scale = scale;
 		if (scale)
 		{

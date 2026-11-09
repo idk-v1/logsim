@@ -80,7 +80,6 @@ int main()
 				case SDL_SCANCODE_RIGHT: right = true; break;
 				case SDL_SCANCODE_LEFTBRACKET: sim.zoom(-1, surface->w, surface->h); break;
 				case SDL_SCANCODE_RIGHTBRACKET: sim.zoom(1, surface->w, surface->h); break;
-				case SDL_SCANCODE_1: sim.zoom(0, surface->w, surface->h); break;
 				}
 				break;
 

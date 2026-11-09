@@ -111,7 +111,6 @@ void LogicSim::setZoom(int scale, int screenw, int screenh)
 		scrollx += cxf * board.getSize().x * scaleDiff + screenw * screenmul;
 		scrolly += cyf * board.getSize().y * scaleDiff + screenh * screenmul;
 
-		printf("%f (%d, %d)\n", scaleDiff, scrollx, scrolly);
 		this->scale = scale;
 		if (scale)
 		{

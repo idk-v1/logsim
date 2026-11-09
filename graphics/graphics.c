@@ -237,13 +237,16 @@ void getTextSize(const char* text, Uint32 size, Uint32* width, Uint32* height)
 {
 	Uint32 w = 0;
 	Uint32 h = 0;
+
+	Uint32 fontw = (size ? font_w * size : font_w / 2);
+	Uint32 fonth = (size ? font_h * size : font_h / 2);
 	
 	if (text)
 	{
-		h = (size ? font_h : font_h / 2);
+		h = fonth;
 
 		Uint32 x = 0;
-		Uint32 y = (size ? font_h : font_h / 2);
+		Uint32 y = fonth;
 
 		for (Uint32 i = 0; text[i]; i++)
 		{
@@ -251,12 +254,12 @@ void getTextSize(const char* text, Uint32 size, Uint32* width, Uint32* height)
 			{
 				if (x > w)
 					w = x;
-				y += (size ? font_h : font_h / 2) + lineSpacing;
+				y += fonth + lineSpacing;
 				x = 0;
 			}
 			else
 			{
-				x += (size ? font_w : font_w / 2) + letterSpacing;
+				x += fontw + letterSpacing;
 				h = y;
 			}
 		}

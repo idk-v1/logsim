@@ -42,9 +42,11 @@ int main()
 	bool click = false;
 	bool oldclick = false;
 	
-	int ticks = 0;
+	size_t ticks = 0;
 	bool pause = false;
 	bool running = true;
+	bool left = false, right = false, up = false, down = false;
+	float velx = 0, vely = 0;
 	while (running)
 	{
 		oldmousex = mousex;
@@ -72,34 +74,28 @@ int main()
 			case SDL_EVENT_KEY_DOWN:
 				switch (event.key.scancode)
 				{
-				case SDL_SCANCODE_DOWN:
-					sim.scroll(0, -10);
-					break;
-				case SDL_SCANCODE_UP:
-					sim.scroll(0, 10);
-					break;
-				case SDL_SCANCODE_LEFT:
-					sim.scroll(10, 0);
-					break;
-				case SDL_SCANCODE_RIGHT:
-					sim.scroll(-10, 0);
-					break;
-				case SDL_SCANCODE_LEFTBRACKET:
-					sim.zoom(-1, surface->w, surface->h);
-					break;
-				case SDL_SCANCODE_RIGHTBRACKET:
-					sim.zoom(1, surface->w, surface->h);
-					break;
+				case SDL_SCANCODE_DOWN: down = true; break;
+				case SDL_SCANCODE_UP: up = true; break;
+				case SDL_SCANCODE_LEFT: left = true; break;
+				case SDL_SCANCODE_RIGHT: right = true; break;
+				case SDL_SCANCODE_LEFTBRACKET: sim.zoom(-1, surface->w, surface->h); break;
+				case SDL_SCANCODE_RIGHTBRACKET: sim.zoom(1, surface->w, surface->h); break;
+				case SDL_SCANCODE_1: sim.zoom(0, surface->w, surface->h); break;
 				}
 				break;
 
-			case SDL_EVENT_MOUSE_BUTTON_DOWN:
-				click = true;
+			case SDL_EVENT_KEY_UP:
+				switch (event.key.scancode)
+				{
+				case SDL_SCANCODE_DOWN: down = false; break;
+				case SDL_SCANCODE_UP: up = false; break;
+				case SDL_SCANCODE_LEFT: left = false; break;
+				case SDL_SCANCODE_RIGHT: right = false; break;
+				}
 				break;
 
-			case SDL_EVENT_MOUSE_BUTTON_UP:
-				click = false;
-				break;
+			case SDL_EVENT_MOUSE_BUTTON_DOWN: click = true; break;
+			case SDL_EVENT_MOUSE_BUTTON_UP: click = false; break;
 
 			case SDL_EVENT_WINDOW_RESIZED:
 				width = event.window.data1;
@@ -108,13 +104,20 @@ int main()
 				break;
 			}
 		}
+
+		velx += (left - right) * 2.f;
+		vely += (up - down) * 2.f;
+		velx *= 0.7f;
+		vely *= 0.7f;
+		sim.scroll(velx, vely);
+
 		clearScreen(surface, rgb(0, 0, 0));
 
 		sim.draw(surface);
 
 
 
-		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %d", ticks);
+		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
 
 		SDL_UpdateWindowSurface(window);
 

@@ -159,7 +159,7 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 		}
 	}
 
-	if (mouseOverExpand && clickOnce)
+	if (mouseOverExpand && clickOnce && blocks.size())
 	{
 		setExpand(!expand);
 	}
@@ -275,8 +275,11 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	drawRect(surface, bx, by, w, fonth, rgb(15, 15, 15)); // titlebar
 	drawRect(surface, bx, by + fonth, fontw, h - fonth, rgb(63, 15, 15)); // inputs
 	drawRect(surface, bx + w - fontw, by + fonth, fontw, h - fonth, rgb(15, 15, 63)); // outputs
-	drawRect(surface, bx + w - fontw, by, fontw, fonth, rgb(95, 95, 95));
-	drawText(surface, bx + w - fontw, by, fontsize, rgb(255, 255, 255), expand ? "-" : "+");
+	if (blocks.size())
+	{
+		drawRect(surface, bx + w - fontw, by, fontw, fonth, rgb(95, 95, 95));
+		drawText(surface, bx + w - fontw, by, fontsize, rgb(255, 255, 255), expand ? "-" : "+");
+	}
 	drawText(surface, bx + fontw, by, fontsize, rgb(255, 255, 255), label.data()); // title
 
 	int index = 0;

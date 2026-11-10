@@ -137,13 +137,18 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 	for (auto& b : blocks)
 		b.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, held);
 
-	bool clicked = (expanded && mousex >= bx && mousex <= bx + w && mousey >= by + fonth &&
-		mousey <= by + h && click && !oldclick);
+	bool mouseOverWhole = (expanded && mousex >= bx && mousex <= bx + w && 
+		mousey >= by &&	mousey <= by + h);
+	bool mouseOverBody = mouseOverWhole && (mousey >= by + fonth);
+	bool mouseOverTitle = mouseOverWhole && (mousey <= by + fonth);
+	bool mouseOverExpand = mouseOverTitle && (mousex >= bx + w - fontw);
 
-	if (expanded && click)
+	bool clickOnce = click && !oldclick;
+	bool clickHold = click;
+
+	if (clickHold)
 	{
-		if (!*held && mousex >= bx && mousex <= bx + w && mousey >= by &&
-			mousey <= by + fonth && !found)
+		if ((!*held && !found && mouseOverTitle) || *held == this)
 		{
 			x += (mousex - oldmousex) / posMul;
 			y += (mousey - oldmousey) / posMul;
@@ -152,29 +157,20 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 			found = true;
 			*held = this;
 		}
-		else if (*held == this)
-		{
-			x += (mousex - oldmousex) / posMul;
-			y += (mousey - oldmousey) / posMul;
-			x = std::max(5, x);
-			y = std::max(5, y);
-			found = true;
-			*held = this;
-		}
+	}
+
+	if (mouseOverExpand && clickOnce)
+	{
+		setExpand(!expand);
 	}
 
 	if (label == "toggle")
 	{
-		if (clicked)
+		if (mouseOverBody && clickOnce)
 			output["out"].data = !output["out"].data;
 	}
 	else if (label == "button")
-	{
-		if (clicked)
-			output["out"].data = true;
-		else
-			output["out"].data = false;
-	}
+		output["out"].data = (mouseOverBody && clickOnce);
 }
 
 LogicBlock& LogicBlock::add(const LogicBlock& block)
@@ -196,8 +192,8 @@ void LogicBlock::print()
 
 void LogicBlock::setPos(int x, int y)
 {
-	this->x = x;
-	this->y = y;
+	this->x = std::max(x, 5);
+	this->y = std::max(y, 5);
 }
 
 void LogicBlock::setExpand(bool expand)
@@ -247,7 +243,7 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		maxLabel = std::max(maxLabel, 2 + inLen + outLen);
 	}
 	// fit name or at least 1 if blank
-	w = fontw * (int)std::max(maxLabel, label.size());
+	w = fontw * (int)std::max(maxLabel, label.size() + 1);
 	if (expand)
 		for (auto& b : blocks)
 			if (b.w)
@@ -279,6 +275,8 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	drawRect(surface, bx, by, w, fonth, rgb(15, 15, 15)); // titlebar
 	drawRect(surface, bx, by + fonth, fontw, h - fonth, rgb(63, 15, 15)); // inputs
 	drawRect(surface, bx + w - fontw, by + fonth, fontw, h - fonth, rgb(15, 15, 63)); // outputs
+	drawRect(surface, bx + w - fontw, by, fontw, fonth, rgb(95, 95, 95));
+	drawText(surface, bx + w - fontw, by, fontsize, rgb(255, 255, 255), expand ? "-" : "+");
 	drawText(surface, bx + fontw, by, fontsize, rgb(255, 255, 255), label.data()); // title
 
 	int index = 0;
@@ -364,6 +362,16 @@ void LogicBlock::resetWrittenTo()
 bool LogicBlock::isHidden() const
 {
 	return !expanded;
+}
+
+XYCoord LogicBlock::getPos() const
+{
+	return XYCoord(bx, by);
+}
+
+XYCoord LogicBlock::getRelPos() const
+{
+	return XYCoord(x, y);
 }
 
 XYCoord LogicBlock::getSize() const

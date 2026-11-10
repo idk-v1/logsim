@@ -98,6 +98,8 @@ struct LogicBlock
 
 	bool isHidden() const;
 
+	XYCoord getPos() const;
+	XYCoord getRelPos() const;
 	XYCoord getSize() const;
 
 	std::map<std::string, WriteData, strCmpWithArray> input;
@@ -111,7 +113,7 @@ private:
 
 	static int fontw, fonth, fontsize, posMul;
 
-	int x = 0, y = 0, w = 0, h = 0, bx = 0, by = 0;
+	int x = 5, y = 5, w = 0, h = 0, bx = 0, by = 0;
 	bool expand = true, expanded = true;
 };
 

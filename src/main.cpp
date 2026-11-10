@@ -112,6 +112,13 @@ int main()
 
 		clearScreen(surface, rgb(0, 0, 0));
 
+		// points to center of board in case you get lost
+		drawLineFromPoints(surface,
+			sim.getBoard().getPos().x + sim.getBoard().getSize().x / 2,
+			sim.getBoard().getPos().y + sim.getBoard().getSize().y / 2,
+			surface->w / 2,
+			surface->h / 2,
+			rgb(255, 0, 0));
 		sim.draw(surface);
 
 

@@ -367,6 +367,11 @@ bool LogicBlock::isHidden() const
 	return !expanded;
 }
 
+bool LogicBlock::isExpanded() const
+{
+	return expand;
+}
+
 XYCoord LogicBlock::getPos() const
 {
 	return XYCoord(bx, by);

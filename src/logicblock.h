@@ -97,6 +97,7 @@ struct LogicBlock
 	void resetWrittenTo();
 
 	bool isHidden() const;
+	bool isExpanded() const;
 
 	XYCoord getPos() const;
 	XYCoord getRelPos() const;

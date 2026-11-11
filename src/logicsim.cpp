@@ -136,10 +136,6 @@ void LogicSim::zoom(int scale, int screenw, int screenh)
 
 void LogicSim::setScroll(int x, int y)
 {
-	int dx = (scrollx - x) / (float)(scale ? scale * 2 : 1);
-	int dy = (scrolly - y) / (float)(scale ? scale * 2 : 1);
-	if (held)
-		(*held).setPos((*held).getRelPos().x + dx, (*held).getRelPos().y + dy);
 	scrollx = x;
 	scrolly = y;
 
@@ -148,5 +144,11 @@ void LogicSim::setScroll(int x, int y)
 
 void LogicSim::scroll(int x, int y)
 {
-	setScroll(scrollx + x, scrolly + y);
+	if (held)
+	{
+		int dx = -x;
+		int dy = -y;
+		(*held).setPos((*held).getRelPos().x + dx, (*held).getRelPos().y + dy);
+	}
+	setScroll(scrollx + x * (scale ? scale * 2 : 1), scrolly + y * (scale ? scale * 2 : 1));
 }

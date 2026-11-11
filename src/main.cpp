@@ -64,7 +64,7 @@ int main()
 	bool oldclick = false;
 	
 	size_t ticks = 0;
-	int tps = 30;
+	size_t tps = 30;
 	size_t lastTime = SDL_GetTicks();
 	size_t deltaTime = 0, scrollDT = 0;
 	bool pause = false;
@@ -144,9 +144,13 @@ int main()
 			vely *= 0.8f;
 			sim.scroll(velx, vely);
 		}
-		while (deltaTime >= 1000 / tps)
+		if (deltaTime >= 1000 / tps)
 		{
 			deltaTime -= 1000 / tps;
+			if (deltaTime >= 1000 / tps)
+				tps = std::max(tps - 1, 1ull);
+			else
+				++tps;
 
 			if (!pause)
 			{
@@ -170,7 +174,8 @@ int main()
 		sim.draw(surface);
 
 
-		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
+		drawTextFA(surface, 0, surface->h - 1, -1, 1, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
+		drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 1, 1, rgb(255, 255, 255), "TPS: %llu", tps);
 
 		SDL_UpdateWindowSurface(window);
 	}

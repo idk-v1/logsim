@@ -125,7 +125,7 @@ void LogicSim::setZoom(int scale, int screenw, int screenh)
 			fonth = font_h / 2;
 		}
 		LogicBlock::setFontSize(fontw, fonth, scale, (scale ? 2 * scale : 1));
-		recalc();
+		needsRecalc = true;
 	}
 }
 
@@ -142,9 +142,11 @@ void LogicSim::setScroll(int x, int y)
 		(*held).setPos((*held).getRelPos().x + dx, (*held).getRelPos().y + dy);
 	scrollx = x;
 	scrolly = y;
+
+	needsRecalc = true;
 }
 
 void LogicSim::scroll(int x, int y)
 {
-	setScroll(scrollx + x * (scale ? 2 * scale : 1), scrolly + y * (scale ? 2 * scale : 1));
+	setScroll(scrollx + x, scrolly + y);
 }

@@ -127,6 +127,8 @@ void LogicBlock::tick()
 		output["out"].data = !input["in"].data;
 	else if (label == "delay")
 		output["out"].data = input["in"].data;
+	else if (label == "button")
+		output["out"].data = 0;
 	else
 		for (auto& b : blocks)
 			b.tick();
@@ -170,7 +172,7 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 			output["out"].data = !output["out"].data;
 	}
 	else if (label == "button")
-		output["out"].data = (mouseOverBody && clickOnce);
+		output["out"].data |= (mouseOverBody && clickOnce);
 }
 
 LogicBlock& LogicBlock::add(const LogicBlock& block)

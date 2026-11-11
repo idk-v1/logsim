@@ -1500,7 +1500,7 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 	return addr;
 }
 
-
+// n + 7 or 7 cycles write
 // in: data[], inc, set
 // out: data[], sigout
 static LogicBlock& createProgramCounter(LogicSim& sim, LogicBlock& parent, int n)
@@ -1543,6 +1543,44 @@ static LogicBlock& createProgramCounter(LogicSim& sim, LogicBlock& parent, int n
 	sim.connect(mem, "out[]", pc, "data[]", outout);
 
 	return pc;
+}
+
+// 4 cycles write
+// in: zwrite, zdata, ewrite, edata, lwrite, ldata, gwrite, gdata, owrite, odata
+// out: zero, equal, less, greater, overflow
+static LogicBlock& createFlagRegister(LogicSim& sim, LogicBlock& parent)
+{
+	LogicBlock& flags = parent.add(LogicBlock(
+		"zwrite|zdata|ewrite|edata|lwrite|ldata|gwrite|gdata|owrite|odata", 
+		"zero|equal|less|greater|overflow", "flagRegister"));
+
+	LogicBlock& zero = createMemoryCell(sim, flags);
+	LogicBlock& equal = createMemoryCell(sim, flags);
+	LogicBlock& less = createMemoryCell(sim, flags);
+	LogicBlock& greater = createMemoryCell(sim, flags);
+	LogicBlock& overflow = createMemoryCell(sim, flags);
+
+	sim.connect(flags, "zwrite", zero, "write", inin);
+	sim.connect(flags, "zdata", zero, "data", inin);
+	sim.connect(zero, "out", flags, "zero", outout);
+
+	sim.connect(flags, "ewrite", equal, "write", inin);
+	sim.connect(flags, "edata", equal, "data", inin);
+	sim.connect(equal, "out", flags, "equal", outout);
+
+	sim.connect(flags, "lwrite", less, "write", inin);
+	sim.connect(flags, "ldata", less, "data", inin);
+	sim.connect(less, "out", flags, "less", outout);
+
+	sim.connect(flags, "gwrite", greater, "write", inin);
+	sim.connect(flags, "gdata", greater, "data", inin);
+	sim.connect(greater, "out", flags, "greater", outout);
+
+	sim.connect(flags, "owrite", overflow, "write", inin);
+	sim.connect(flags, "odata", overflow, "data", inin);
+	sim.connect(overflow, "out", flags, "overflow", outout);
+
+	return flags;
 }
 
 

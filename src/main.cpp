@@ -11,8 +11,6 @@ int main()
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	setPixelFormat(surface);
 
-	int stepTime = 10;
-
 	LogicSim sim;
 	int n = 8;
 
@@ -25,6 +23,9 @@ int main()
 	LogicBlock& param1_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param1_data);
 	LogicBlock& param2_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param2_data);
 
+	LogicBlock& registers = createAddrMemory(sim, sim.getBoard(), n, n, 8);
+	LogicBlock& flags = createFlagRegister(sim, sim.getBoard());
+
 	LogicBlock& pc = createProgramCounter(sim, sim.getBoard(), n);
 	LogicBlock& incbtn = sim.add(LogicBlockButton);
 	sim.connect(incbtn, "out", pc, "inc");
@@ -32,6 +33,26 @@ int main()
 	LogicBlock& setbtn = sim.add(LogicBlockButton);
 	sim.connect(setbtn, "out", pc, "set");
 	sim.connect(edit, "out[]", pc, "data[]");
+
+	LogicBlock& read = sim.add(LogicBlockToggle);
+	read.setPos(250, 150);
+	sim.connect(read, "out", instr_rom, "read");
+	sim.connect(read, "out", param1_rom, "read");
+	sim.connect(read, "out", param2_rom, "read");
+
+	edit.setExpand(true);
+	edit.setPos(15, 15);
+	setbtn.setPos(15, 250);
+	incbtn.setPos(15, 275);
+
+	pc.setPos(250, 15);
+	instr_rom.setPos(400, 15);
+	param1_rom.setPos(400, 150);
+	param2_rom.setPos(400, 300);
+
+	sim.connect(pc, "data[]", instr_rom, "addr[]");
+	sim.connect(pc, "data[]", param1_rom, "addr[]");
+	sim.connect(pc, "data[]", param2_rom, "addr[]");
 
 
 
@@ -43,6 +64,9 @@ int main()
 	bool oldclick = false;
 	
 	size_t ticks = 0;
+	int tps = 30;
+	size_t lastTime = SDL_GetTicks();
+	size_t deltaTime = 0, scrollDT = 0;
 	bool pause = false;
 	bool running = true;
 	bool left = false, right = false, up = false, down = false;
@@ -80,6 +104,7 @@ int main()
 				case SDL_SCANCODE_RIGHT: right = true; break;
 				case SDL_SCANCODE_LEFTBRACKET: sim.zoom(-1, surface->w, surface->h); break;
 				case SDL_SCANCODE_RIGHTBRACKET: sim.zoom(1, surface->w, surface->h); break;
+				case SDL_SCANCODE_P: pause = !pause; break;
 				}
 				break;
 
@@ -104,11 +129,34 @@ int main()
 			}
 		}
 
-		velx += (left - right) * 2.f;
-		vely += (up - down) * 2.f;
-		velx *= 0.7f;
-		vely *= 0.7f;
-		sim.scroll(velx, vely);
+		sim.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick);
+
+		size_t nowTime = SDL_GetTicks();
+		deltaTime += nowTime - lastTime;
+		scrollDT += nowTime - lastTime;
+		while (scrollDT >= 1000 / 60)
+		{
+			scrollDT -= 1000 / 60;
+
+			velx += (left - right) * 2.f;
+			vely += (up - down) * 2.f;
+			velx *= 0.8f;
+			vely *= 0.8f;
+			sim.scroll(velx, vely);
+		}
+		while (deltaTime >= 1000 / tps)
+		{
+			deltaTime -= 1000 / tps;
+
+			if (!pause)
+			{
+				sim.tick();
+				++ticks;
+			}
+		}
+		lastTime = nowTime;
+
+		sim.recalc();
 
 		clearScreen(surface, rgb(0, 0, 0));
 
@@ -122,20 +170,9 @@ int main()
 		sim.draw(surface);
 
 
-
 		drawTextFA(surface, 0, 600, -1, 1, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
 
 		SDL_UpdateWindowSurface(window);
-
-		if (!pause)
-		{
-			sim.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick);
-			sim.tick();
-			sim.recalc();
-			++ticks;
-		}
-
-		SDL_Delay(stepTime);
 	}
 	SDL_DestroyWindow(window);
 

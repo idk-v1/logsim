@@ -3,6 +3,8 @@
 
 LogicSim::LogicSim() : board("Board")
 { 
+	board.setExpand(true);
+
 	if (scale)
 	{
 		fontw = font_w * scale;

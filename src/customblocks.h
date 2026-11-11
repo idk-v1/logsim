@@ -419,6 +419,49 @@ static LogicBlock& createNBitGate(LogicSim& sim, LogicBlock& parent, int n)
 	return gate;
 }
 
+// 2 cycles
+// in: in[]
+// out: out
+static LogicBlock& createNBitIsEqualConst(LogicSim& sim, LogicBlock& parent, int n, int64_t value)
+{
+	LogicBlock& equal = parent.add(LogicBlock(arrayToStr("in", n), 
+		"out", std::to_string(n) + "bitIsEqualConst"));
+
+	LogicBlock& num = createNBitNumber(sim, equal, n, value);
+	LogicBlock& isequal = createNBitIsEqual(sim, equal, n);
+	sim.connect(equal, "in[]", isequal, "a[]", inin);
+	sim.connect(num, "out[]", isequal, "b[]");
+	sim.connect(isequal, "out", equal, "out", outout);
+
+	return equal;
+}
+
+// 3 cycles
+// in: num[], data[], sigin
+// out: data[], sigout
+static LogicBlock& createNBitIsEqualConstDataSigGate(LogicSim& sim, LogicBlock& parent, int n, int64_t value)
+{
+	LogicBlock& ecdsg = parent.add(LogicBlock(arrayToStr("num", n) + arrayToStr("data", n) + "|sigin",
+		arrayToStr("data[]", n) + "|sigout", std::to_string(n) + "bitIsEqualConstDataSigGate"));
+
+	LogicBlock& equal = createNBitIsEqualConst(sim, ecdsg, n, value);
+	LogicBlock& datagate = createNBitGate(sim, ecdsg, n);
+	LogicBlock& siggate = ecdsg.add(LogicBlockAnd);
+	LogicBlock& delay = createNDelay(sim, ecdsg, 2);
+
+	sim.connect(ecdsg, "num[]", equal, "in[]", inin);
+	sim.connect(ecdsg, "data[]", datagate, "in[]", inin);
+	sim.connect(ecdsg, "sigin", delay, "in", inin);
+	sim.connect(equal, "out", datagate, "write");
+	sim.connect(delay, "out", siggate, "a");
+	sim.connect(equal, "out", siggate, "b");
+	sim.connect(datagate, "out[]", ecdsg, "data[]", outout);
+	sim.connect(siggate, "out", ecdsg, "sigout", outout);
+
+	return ecdsg;
+}
+
+
 // 1 cycle
 // in: in[]
 // out: out[]
@@ -1457,6 +1500,50 @@ static LogicBlock& createAddrROM(LogicSim& sim, LogicBlock& parent, int addrBits
 	return addr;
 }
 
+
+// in: data[], inc, set
+// out: data[], sigout
+static LogicBlock& createProgramCounter(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& pc = parent.add(LogicBlock(arrayToStr("data", n) + "|inc|set",
+		arrayToStr("data", n) + "|sigout", std::to_string(n) + "bitPC"));
+
+	LogicBlock& mem = createNBitMemory(sim, pc, n);
+	LogicBlock& read = pc.add(LogicBlockOn);
+	sim.connect(read, "out", mem, "read");
+
+	LogicBlock& setGate = createNBitGate(sim, pc, n);
+	LogicBlock& setDelay = createNDelay(sim, pc, 1); // somehow this is different than a regular delay
+
+	LogicBlock& inc = createNBitAdd1(sim, pc, n);
+	LogicBlock& incGate = createNBitGate(sim, pc, n);
+	LogicBlock& incDelay = pc.add(LogicBlockDelay);
+	
+	LogicBlock& sigdelay = createNDelay(sim, pc, 6);
+
+	sim.connect(mem, "out[]", inc, "a[]");
+	sim.connect(pc, "inc", inc, "sigin", inin);
+	sim.connect(inc, "out[]", incGate, "in[]");
+	sim.connect(inc, "sigout", incGate, "write");
+	sim.connect(inc, "sigout", incDelay, "in");
+	sim.connect(incGate, "out[]", mem, "data[]");
+	sim.connect(incDelay, "out", mem, "write");
+	sim.connect(incDelay, "out", sigdelay, "in");
+
+	sim.connect(pc, "data[]", setGate, "in[]", inin);
+	sim.connect(pc, "set", setGate, "write", inin);
+	sim.connect(pc, "set", setDelay, "in", inin);
+	sim.connect(setGate, "out[]", mem, "data[]");
+	sim.connect(setDelay, "out", mem, "write");
+	sim.connect(setDelay, "out", sigdelay, "in");
+
+	// always read enabled, so sigout can't come from mem
+	// write is 5 cycles
+	sim.connect(sigdelay, "out", pc, "sigout", outout);
+	sim.connect(mem, "out[]", pc, "data[]", outout);
+
+	return pc;
+}
 
 
 // in: one, five, ten, addsub, action

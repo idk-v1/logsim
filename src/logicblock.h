@@ -115,7 +115,7 @@ private:
 	static int fontw, fonth, fontsize, posMul;
 
 	int x = 5, y = 5, w = 0, h = 0, bx = 0, by = 0;
-	bool expand = true, expanded = true;
+	bool expand = false, hidden = false;
 };
 
 // in: a, b

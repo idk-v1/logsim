@@ -1,0 +1,73 @@
+add all numbers from 1 to 10
+assume all init to 0
+
+
+int out = 0;
+int start = 1;
+int end = 10;
+for (int i = start; i <= end; ++i)
+    out += i;
+exit();
+
+
+int out = 0;
+int i = 1;
+int end = 10;
+loop:
+    if (i > end)
+        goto after;
+    out = out + i;
+    i = i + 1;
+    goto loop;
+after:
+  exit();
+
+
+pc02
+zero     0
+equal    0
+less     1
+greater  0
+overflow 0
+A 10 // math 1
+B 06 // math 2
+C 05 // counter
+D 00 // flags
+E 10 // out
+F 10 // end
+
+   // i = 1
+00 22 loadimm 1, regC
+   // end = 10
+01 22 loadimm 10, regF
+loop: 02
+   // if (i <= end)
+02 1F move regC, regA
+03 1F move regF, regB
+04 17 compare
+   // goto after
+05 05 jumpifgreater after 0B
+   // out = out + i
+06 1F move regE, regB
+07 08 add
+08 1F move regA, regE
+   // i = i + 1
+09 0A increment
+   // goto loop
+0A 02 jump loop 02
+after: 0B
+   // exit()
+0B 01 halt
+
+00 22 02 00
+01 22 05 01
+02 1F 02 00
+03 1F 05 01
+04 17 XX XX
+05 05 0B XX
+06 1F 04 01
+07 08 XX XX
+08 1F 00 04
+09 0A XX XX
+0A 02 02 XX
+0B 01 XX XX

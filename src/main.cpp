@@ -11,31 +11,31 @@ int main()
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	setPixelFormat(surface);
 
-	int stepTime = 0;
+	int stepTime = 10;
 
 	LogicSim sim;
+	int n = 8;
 
-	//int64_t data[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
-	//LogicBlock& rom = createAddrROM(sim, sim.getBoard(), 8, 8, 8, data);
-	LogicBlock& edit0 = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	edit0.setPos(0, 0);
-	LogicBlock& edit1 = createNBitNumberEditorCtrl(sim, sim.getBoard(), 8);
-	edit1.setPos(0, 250);
-	LogicBlock& comp = createNBitCompare(sim, sim.getBoard(), 8);
-	comp.setPos(250, 0);
-	sim.connect(edit0, "out[]", comp, "a[]");
-	sim.connect(edit1, "out[]", comp, "b[]");
-	LogicBlock& signal = sim.add(LogicBlockToggle);
-	sim.connect(signal, "out", comp, "sigin");
-	signal.setPos(0, 500);
-	//LogicBlock& read = sim.add(LogicBlockToggle);
-	//rom.setPos(300, 15);
-	//read.setPos(0, 300);
-	//sim.connect(edit, "out[]", rom, "addr[]");
-	//sim.connect(read, "out", rom, "read");
+	LogicBlock& startbtn = sim.add(LogicBlockButton);
+
+	int64_t instr_data[]  = { 0x22, 0x22, 0x1F, 0x1F, 0x17, 0x05, 0x1F, 0x08, 0x1F, 0x0A, 0x02, 0x01 };
+	int64_t param1_data[] = { 0x02, 0x05, 0x02, 0x05, 0x00, 0x0B, 0x04, 0x00, 0x00, 0x00, 0x02, 0x00 };
+	int64_t param2_data[] = { 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00 };
+	LogicBlock& instr_rom  = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), instr_data);
+	LogicBlock& param1_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param1_data);
+	LogicBlock& param2_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param2_data);
+
+	LogicBlock& pc = createProgramCounter(sim, sim.getBoard(), n);
+	LogicBlock& incbtn = sim.add(LogicBlockButton);
+	sim.connect(incbtn, "out", pc, "inc");
+	LogicBlock& edit = createNBitNumberEditorCtrl(sim, sim.getBoard(), n);
+	LogicBlock& setbtn = sim.add(LogicBlockButton);
+	sim.connect(setbtn, "out", pc, "set");
+	sim.connect(edit, "out[]", pc, "data[]");
+
+
 
 	sim.recalc();
-	//sim.setZoom(1, surface->w, surface->h);
 
 	int mousex = 0, mousey = 0;
 	int oldmousex = 0, oldmousey = 0;

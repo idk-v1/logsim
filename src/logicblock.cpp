@@ -137,7 +137,7 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 	for (auto& b : blocks)
 		b.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, held);
 
-	bool mouseOverWhole = (expanded && mousex >= bx && mousex <= bx + w && 
+	bool mouseOverWhole = (!hidden && mousex >= bx && mousex <= bx + w && 
 		mousey >= by &&	mousey <= by + h);
 	bool mouseOverBody = mouseOverWhole && (mousey >= by + fonth);
 	bool mouseOverTitle = mouseOverWhole && (mousey <= by + fonth);
@@ -209,13 +209,13 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		h = 0;
 		bx = 0;
 		by = 0;
-		this->expanded = false;
+		this->hidden = true;
 		for (auto& b : blocks)
 			b.recalc(bx, by, false);
 		return;
 	}
 
-	this->expanded = true;
+	this->hidden = false;
 
 	bx = px + x * posMul + fonth;
 	by = py + y * posMul + fontw;
@@ -364,7 +364,7 @@ void LogicBlock::resetWrittenTo()
 
 bool LogicBlock::isHidden() const
 {
-	return !expanded;
+	return hidden;
 }
 
 bool LogicBlock::isExpanded() const

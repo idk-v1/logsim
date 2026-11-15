@@ -436,17 +436,19 @@ static LogicBlock& createNBitIsEqualConst(LogicSim& sim, LogicBlock& parent, int
 	return equal;
 }
 
-// 3 cycles
+// 4 cycles
 // in: num[], data[], sigin
 // out: data[], sigout
 static LogicBlock& createNBitIsEqualConstDataSigGate(LogicSim& sim, LogicBlock& parent, int n, int64_t value)
 {
-	LogicBlock& ecdsg = parent.add(LogicBlock(arrayToStr("num", n) + arrayToStr("data", n) + "|sigin",
-		arrayToStr("data[]", n) + "|sigout", std::to_string(n) + "bitIsEqualConstDataSigGate"));
+	LogicBlock& ecdsg = parent.add(LogicBlock(
+		arrayToStr("num", n) + "|" + arrayToStr("data", n) + "|sigin",
+		arrayToStr("data", n) + "|sigout", std::to_string(n) + "bitIsEqualConstDataSigGate"));
 
 	LogicBlock& equal = createNBitIsEqualConst(sim, ecdsg, n, value);
 	LogicBlock& datagate = createNBitGate(sim, ecdsg, n);
 	LogicBlock& siggate = ecdsg.add(LogicBlockAnd);
+	LogicBlock& sig = ecdsg.add(LogicBlockDelay);
 	LogicBlock& delay = createNDelay(sim, ecdsg, 2);
 
 	sim.connect(ecdsg, "num[]", equal, "in[]", inin);
@@ -456,7 +458,8 @@ static LogicBlock& createNBitIsEqualConstDataSigGate(LogicSim& sim, LogicBlock& 
 	sim.connect(delay, "out", siggate, "a");
 	sim.connect(equal, "out", siggate, "b");
 	sim.connect(datagate, "out[]", ecdsg, "data[]", outout);
-	sim.connect(siggate, "out", ecdsg, "sigout", outout);
+	sim.connect(siggate, "out", sig, "in");
+	sim.connect(sig, "out", ecdsg, "sigout", outout);
 
 	return ecdsg;
 }
@@ -1080,7 +1083,7 @@ static LogicBlock& createNBitMulPN(LogicSim& sim, LogicBlock& parent, int n)
 }
 
 
-// 2n*log2(n) + 4(pp) or 2n*(log2(n) + 1) + 5(pn) or 2n*log2(n) + n + 5(nn) cycles
+// 2*2n*log2(n) + 4(pp) or 2*2n*(log2(n) + 1) + 5(pn) or 2*2n*log2(n) + n + 6(nn) cycles
 // in: a[], b[], sigin
 // out: out[]x2, sigout
 static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
@@ -1205,8 +1208,8 @@ static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 	gateNNs.setPos(15, 150 + 185 * 3);
 	gateNNa.setPos(100, 15 + 185 * 3);
 	gateNNb.setPos(100, 100 + 185 * 3);
-	sim.connect(mul, arrayToStr("a", n - 1), andNN, "in", inin);
-	sim.connect(mul, arrayToStr("b", n - 1), andNN, "in", inin);
+	sim.connect(mul, arrayToStr("a", n - 1), andNN, "a", inin);
+	sim.connect(mul, arrayToStr("b", n - 1), andNN, "b", inin);
 	sim.connect(andNN, "out", gateNNa, "write");
 	sim.connect(andNN, "out", gateNNb, "write");
 	sim.connect(mul, "a[]", gateNNa, "in[]", inin);
@@ -1214,9 +1217,17 @@ static LogicBlock& createNBitMul(LogicSim& sim, LogicBlock& parent, int n)
 	sim.connect(gateNNa, "out[]", negatea, "in[]");
 	sim.connect(gateNNb, "out[]", negateb, "in[]");
 	sim.connect(gateNNs, "out", negatea, "sigin");
-	sim.connect(negatea, "sigout", mulPP, "sigin");
-	sim.connect(negatea, "out[]", mulPP, "a[]");
-	sim.connect(negateb, "out[]", mulPP, "b[]");
+	LogicBlock& negategatea = createNBitGate(sim, mul, n);
+	LogicBlock& negategateb = createNBitGate(sim, mul, n);
+	LogicBlock& negategatedelay = mul.add(LogicBlockDelay);
+	sim.connect(negatea, "sigout", negategatea, "write");
+	sim.connect(negatea, "sigout", negategatedelay, "in");
+	sim.connect(negategatedelay, "out", mulPP, "sigin");
+	sim.connect(negatea, "out[]", negategatea, "in[]");
+	sim.connect(negategatea, "out[]", mulPP, "a[]");
+	sim.connect(negateb, "out[]", negategateb, "in[]");
+	sim.connect(negategateb, "out[]", mulPP, "b[]");
+	sim.connect(negatea, "sigout", negategateb, "write");
 	sim.connect(delay, "out", gateNNs, "a");
 	sim.connect(andNN, "out", gateNNs, "b");
 	sim.connect(mulPP, "out[]", mul, "out[]", outout);
@@ -1291,7 +1302,7 @@ static LogicBlock& createNPulse(LogicSim& sim, LogicBlock& parent, int n)
 	return pulse;
 }
 
-// 4 cycle write
+// 5 cycle write
 // 0 cycle read
 // in: data, write
 // out: out
@@ -1310,7 +1321,9 @@ static LogicBlock& createMemoryCell(LogicSim& sim, LogicBlock& parent)
 	gate.setPos(80, 15);
 	sim.connect(inv, "out", gate, "in[0]");
 	sim.connect(pass, "out", gate, "in[1]");
-	sim.connect(mem, "write", gate, "write", inin);
+	LogicBlock& writedelay = mem.add(LogicBlockDelay);
+	sim.connect(mem, "write", writedelay, "in", inin);
+	sim.connect(writedelay, "out", gate, "write");
 
 	LogicBlock& stab = mem.add(LogicBlockAnd);
 	stab.setPos(175, 15);
@@ -1345,20 +1358,20 @@ static LogicBlock& createMemoryCell(LogicSim& sim, LogicBlock& parent)
 	return mem;
 }
 
-// 5 cycle write
-// 1 cycle read
+// 6 cycle write
+// 2 cycle read
 // in: data[], write, read
-// out: out[], sigout
+// out: out[], wsigout, rsigout
 static LogicBlock& createNBitMemory(LogicSim& sim, LogicBlock& parent, int n)
 {
 	LogicBlock& mem = parent.add(LogicBlock(arrayToStr("data", n) + "|write|read", 
-		arrayToStr("out", n) + "|sigout", std::to_string(n) + "bitMemory"));
+		arrayToStr("out", n) + "|wsigout|rsigout", std::to_string(n) + "bitMemory"));
 
 	LogicBlock& gate = createNBitGate(sim, mem, n);
 	sim.connect(mem, "read", gate, "write", inin);
-	LogicBlock& readdelay = mem.add(LogicBlockDelay);
+	LogicBlock& readdelay = createNDelay(sim, mem, 2);
 	sim.connect(mem, "read", readdelay, "in", inin);
-	sim.connect(readdelay, "out", mem, "sigout", outout);
+	sim.connect(readdelay, "out", mem, "rsigout", outout);
 
 	for (int i = 0; i < n; ++i)
 	{
@@ -1373,22 +1386,22 @@ static LogicBlock& createNBitMemory(LogicSim& sim, LogicBlock& parent, int n)
 	sim.connect(gate, "out[]", mem, "out[]", outout);
 	gate.setPos(200, 15);
 
-	LogicBlock& delay = createNDelay(sim, mem, 5);
+	LogicBlock& delay = createNDelay(sim, mem, 6);
 	sim.connect(mem, "write", delay, "in", inin);
-	sim.connect(delay, "out", mem, "sigout", outout);
+	sim.connect(delay, "out", mem, "wsigout", outout);
 
 	return mem;
 }
 
-// 8 cycles write
-// 4 cycles read
+// 9 cycles write
+// 5 cycles read
 // in: data[], addr[], write, read
-// out: out[], sigout
+// out: out[], wsigout, rsigout
 static LogicBlock& createAddrMemory(LogicSim& sim, LogicBlock& parent, int addrBits, int bitsPerByte, int n)
 {
 	LogicBlock& addr = parent.add(LogicBlock(
 		arrayToStr("data", bitsPerByte) + "|" + arrayToStr("addr", addrBits) + 
-		"|write|read", arrayToStr("out", bitsPerByte) + "|sigout", 
+		"|write|read", arrayToStr("out", bitsPerByte) + "|wsigout|rsigout", 
 		std::to_string(addrBits) + "bitAddrMem"));
 
 	for (int i = 0; i < n; ++i)
@@ -1397,8 +1410,8 @@ static LogicBlock& createAddrMemory(LogicSim& sim, LogicBlock& parent, int addrB
 		LogicBlock& cmp = createNBitIsEqual(sim, addr, addrBits);
 		LogicBlock& num = createNBitNumber(sim, addr, addrBits, i);
 		LogicBlock& gate = createNBitGate(sim, addr, 2);
-		LogicBlock& readdelay = createNDelay(sim, addr, 4);
-		LogicBlock& writedelay = createNDelay(sim, addr, 4);
+		LogicBlock& readdelay = createNDelay(sim, addr, 2);
+		LogicBlock& writedelay = createNDelay(sim, addr, 2);
 		LogicBlock& datadelay = createNDelayBuf(sim, addr, 3, bitsPerByte);
 
 		mem.setExpand(false);
@@ -1430,7 +1443,8 @@ static LogicBlock& createAddrMemory(LogicSim& sim, LogicBlock& parent, int addrB
 		sim.connect(datadelay, "out[]", mem, "data[]");
 
 		sim.connect(mem, "out[]", addr, "out[]", outout);
-		sim.connect(mem, "sigout", addr, "sigout", outout);
+		sim.connect(mem, "wsigout", addr, "wsigout", outout);
+		sim.connect(mem, "rsigout", addr, "rsigout", outout);
 	}
 
 	return addr;
@@ -1513,14 +1527,12 @@ static LogicBlock& createProgramCounter(LogicSim& sim, LogicBlock& parent, int n
 	sim.connect(read, "out", mem, "read");
 
 	LogicBlock& setGate = createNBitGate(sim, pc, n);
-	LogicBlock& setDelay = createNDelay(sim, pc, 1); // somehow this is different than a regular delay
+	LogicBlock& setDelay = pc.add(LogicBlockDelay);
 
 	LogicBlock& inc = createNBitAdd1(sim, pc, n);
 	LogicBlock& incGate = createNBitGate(sim, pc, n);
 	LogicBlock& incDelay = pc.add(LogicBlockDelay);
 	
-	LogicBlock& sigdelay = createNDelay(sim, pc, 6);
-
 	sim.connect(mem, "out[]", inc, "a[]");
 	sim.connect(pc, "inc", inc, "sigin", inin);
 	sim.connect(inc, "out[]", incGate, "in[]");
@@ -1528,18 +1540,14 @@ static LogicBlock& createProgramCounter(LogicSim& sim, LogicBlock& parent, int n
 	sim.connect(inc, "sigout", incDelay, "in");
 	sim.connect(incGate, "out[]", mem, "data[]");
 	sim.connect(incDelay, "out", mem, "write");
-	sim.connect(incDelay, "out", sigdelay, "in");
 
 	sim.connect(pc, "data[]", setGate, "in[]", inin);
 	sim.connect(pc, "set", setGate, "write", inin);
 	sim.connect(pc, "set", setDelay, "in", inin);
 	sim.connect(setGate, "out[]", mem, "data[]");
 	sim.connect(setDelay, "out", mem, "write");
-	sim.connect(setDelay, "out", sigdelay, "in");
 
-	// always read enabled, so sigout can't come from mem
-	// write is 5 cycles
-	sim.connect(sigdelay, "out", pc, "sigout", outout);
+	sim.connect(mem, "wsigout", pc, "sigout", outout);
 	sim.connect(mem, "out[]", pc, "data[]", outout);
 
 	return pc;
@@ -1582,6 +1590,128 @@ static LogicBlock& createFlagRegister(LogicSim& sim, LogicBlock& parent)
 
 	return flags;
 }
+
+// 3 cycles
+// in: set, reset
+// out: out
+static LogicBlock& createFlipFlop(LogicSim& sim, LogicBlock& parent)
+{
+	LogicBlock& flipflop = parent.add(LogicBlock("set|reset", "out", "flipflop"));
+
+	LogicBlock& stab = flipflop.add(LogicBlockAnd);
+	LogicBlock& nota = flipflop.add(LogicBlockNot);
+	LogicBlock& notb = flipflop.add(LogicBlockNot);
+	LogicBlock& setdelay = flipflop.add(LogicBlockDelay);
+	LogicBlock& resetdelay = flipflop.add(LogicBlockDelay);
+
+	sim.connect(flipflop, "set", notb, "in", inin);
+	sim.connect(flipflop, "set", setdelay, "in", inin);
+	sim.connect(setdelay, "out", notb, "in");
+	sim.connect(flipflop, "reset", nota, "in", inin);
+	sim.connect(flipflop, "reset", resetdelay, "in", inin);
+	sim.connect(resetdelay, "out", nota, "in");
+	sim.connect(nota, "out", flipflop, "out", outout);
+	sim.connect(nota, "out", stab, "a");
+	sim.connect(notb, "out", stab, "b");
+	sim.connect(stab, "out", nota, "in");
+	sim.connect(notb, "out", nota, "in");
+	sim.connect(nota, "out", notb, "in");
+
+	return flipflop;
+}
+
+// in: param1->addr[], param2->data[], instr->num[], sigin
+// out: addr[], data[], sigout
+static LogicBlock& createInstrLoadImm(LogicSim& sim, LogicBlock& parent, int n)
+{
+	// needs to write param2 to addr param1
+	LogicBlock& loadimm = parent.add(LogicBlock(
+		arrayToStr("num", n) + "|" + arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|sigin",
+		arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|sigout", "loadimm"));
+	LogicBlock& loadimmGateA = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x22);
+	LogicBlock& loadimmGateB = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x22);
+	// only needs these 3 below bc data out could interfere if left on a few more cycles
+	// didn't cause a problem, just could
+	LogicBlock& loadimmOutGateA = createNBitGate(sim, loadimm, n);
+	LogicBlock& loadimmOutGateB = createNBitGate(sim, loadimm, n);
+	LogicBlock& loadimmWrite = createNDelay(sim, loadimm, 2);
+
+	sim.connect(loadimm, "num[]", loadimmGateA, "num[]", inin);
+	sim.connect(loadimm, "num[]", loadimmGateB, "num[]", inin);
+	sim.connect(loadimm, "addr[]", loadimmGateA, "data[]", inin);
+	sim.connect(loadimm, "data[]", loadimmGateB, "data[]", inin);
+	sim.connect(loadimm, "sigin", loadimmGateA, "sigin", inin);
+	sim.connect(loadimmGateA, "data[]", loadimmOutGateA, "in[]");
+	sim.connect(loadimmGateB, "data[]", loadimmOutGateB, "in[]");
+	sim.connect(loadimmOutGateA, "out[]", loadimm, "addr[]", outout);
+	sim.connect(loadimmOutGateB, "out[]", loadimm, "data[]", outout);
+	sim.connect(loadimmGateA, "sigout", loadimmOutGateA, "write");
+	sim.connect(loadimmGateA, "sigout", loadimmOutGateB, "write");
+	sim.connect(loadimmGateA, "sigout", loadimmWrite, "in");
+	sim.connect(loadimmWrite, "out", loadimm, "sigout", outout);
+
+	return loadimm;
+}
+
+// in: param1->addrsrc[], param2->addrdst[], instr->num[], memin[], rsigin, sigin
+// out: addr[], data[], wsigout, rsigout
+static LogicBlock& createInstrMove(LogicSim& sim, LogicBlock& parent, int n)
+{
+	// read from addr param1 into buffer, write buffer into addr param2
+	LogicBlock& move = parent.add(LogicBlock(
+		arrayToStr("num", n) + "|" + arrayToStr("addrsrc", n) + "|" + arrayToStr("addrdst", n) + "|" + arrayToStr("memin", n) + "|rsigin|sigin",
+		arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|wsigout|rsigout", "move"));
+
+	LogicBlock& moveGateA = createNBitIsEqualConstDataSigGate(sim, move, n, 0x1F);
+	LogicBlock& moveGateB = createNBitIsEqualConstDataSigGate(sim, move, n, 0x1F);
+
+	LogicBlock& gateSrc = createNBitGate(sim, move, n);
+	LogicBlock& srcDelay = createNDelay(sim, move, 2);
+	LogicBlock& gateDst = createNBitGate(sim, move, n);
+	LogicBlock& gateData = createNBitGate(sim, move, n);
+
+	// to guard against other instructions messing with memory
+	LogicBlock& flipflop = createFlipFlop(sim, move);
+	LogicBlock& writesig = move.add(LogicBlockAnd);
+	LogicBlock& dataBuf = createNDelayBuf(sim, move, 1, n);
+	LogicBlock& addrBuf = createNDelayBuf(sim, move, 1, n);
+	LogicBlock& writedelay = createNDelay(sim, move, 2);
+
+	sim.connect(move, "num[]", moveGateA, "num[]", inin);
+	sim.connect(move, "num[]", moveGateB, "num[]", inin);
+	sim.connect(move, "addrsrc[]", moveGateA, "data[]", inin);
+	sim.connect(move, "addrdst[]", moveGateB, "data[]", inin);
+	sim.connect(move, "sigin", moveGateA, "sigin", inin);
+
+	// read
+	sim.connect(moveGateA, "data[]", gateSrc, "in[]");
+	sim.connect(moveGateA, "sigout", gateSrc, "write");
+	sim.connect(moveGateA, "sigout", srcDelay, "in");
+	sim.connect(srcDelay, "out", move, "rsigout", outout);
+	sim.connect(gateSrc, "out[]", move, "addr[]", outout);
+	sim.connect(moveGateA, "sigout", flipflop, "set");
+
+	// recieve
+	sim.connect(flipflop, "out", writesig, "a");
+	sim.connect(move, "rsigin", writesig, "b", inin);
+	sim.connect(writesig, "out", flipflop, "reset");
+
+	sim.connect(writesig, "out", gateData, "write");
+	sim.connect(move, "memin[]", dataBuf, "in[]", inin);
+	sim.connect(dataBuf, "out[]", gateData, "in[]");
+	sim.connect(gateData, "out[]", move, "data[]", outout);
+
+	// write
+	sim.connect(writesig, "out", gateDst, "write");
+	sim.connect(moveGateB, "data[]", addrBuf, "in[]");
+	sim.connect(addrBuf, "out[]", gateDst, "in[]");
+	sim.connect(gateDst, "out[]", move, "addr[]", outout);
+	sim.connect(writesig, "out", writedelay, "in");
+	sim.connect(writedelay, "out", move, "wsigout", outout);
+
+	return move;
+}
+
 
 
 // in: one, five, ten, addsub, action

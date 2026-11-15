@@ -159,6 +159,12 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 	Sint32 dx = x1 - x0;
 	Sint32 dy = y1 - y0;
 
+	if ((x0 < 0 && x1 < 0) || 
+		(y0 < 0 && y1 < 0) || 
+		(x0 >= surface->w && x1 >= surface->w) || 
+		(y0 >= surface->h && y1 >= surface->h))
+		return;
+
 	if (dx == 0) // vertical
 	{
 		if (dy < 0)
@@ -168,8 +174,10 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 			y1 = temp;
 			dy = -dy;
 		}
+		y0 = max(y0, 0);
+		y1 = min(y1, surface->h - 1);
 		for (Sint32 y = y0; y <= y1; ++y)
-			setPixel(surface, x0, y, color);
+			setPixelUC(surface, x0, y, color);
 	}
 	else if (dy == 0) // horizontal
 	{
@@ -180,8 +188,10 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 			x1 = temp;
 			dx = -dx;
 		}
+		x0 = max(x0, 0);
+		x1 = min(x1, surface->w - 1);
 		for (Sint32 x = x0; x <= x1; ++x)
-			setPixel(surface, x, y0, color);
+			setPixelUC(surface, x, y0, color);
 	}
 	else
 	{
@@ -199,10 +209,19 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				dy = y1 - y0;
 			}
 			float slope = dy / (float)dx;
+			Sint32 oldx0 = x0;
+			x0 = max(x0, 0);
+			x1 = min(x1, surface->w - 1);
+			Sint32 badx0 = (-y0) / slope + oldx0;
+			Sint32 badx1 = (surface->h - y0) / slope + oldx0;
 			for (Sint32 x = x0; x <= x1; ++x)
 			{
-				float y = roundf(slope * (x - x0) + y0);
+				float y = (slope * (x - oldx0) + y0);
 				setPixel(surface, x, y, color);
+				if (x == badx0 || x == badx1 || x == 0 || x == surface->w - 1)
+				{
+					//drawRectA(surface, x, y, 0, 0, 5, 5, rgb(255, 0, 0));
+				}
 			}
 		}
 		else // use y as loop var
@@ -219,10 +238,35 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 				dy = y1 - y0;
 			}
 			float slope = dx / (float)dy;
+			Sint32 oldy0 = y0;
+			y0 = max(y0, 0);
+			y1 = min(y1, surface->h - 1);
+			Sint32 bady0 = (-x0) / slope + oldy0;
+			Sint32 bady1 = (surface->w - x0) / slope + oldy0;
+			if (slope > 0)
+			{
+				// wip
+				if (bady0 >= 0)
+				{
+					y0 = max(y0, bady0);
+					float x = (slope * (y0 - oldy0) + x0);
+					//drawRectA(surface, x, y0, 0, 0, 5, 5, rgb(0, 255, 255));
+				}
+				if (bady1 < surface->h)
+				{
+					y1 = min(y1, bady1);
+					float x = (slope * (y1 - oldy0) + x0);
+					//drawRectA(surface, x, y1, 0, 0, 5, 5, rgb(0, 255, 255));
+				}
+			}
 			for (Sint32 y = y0; y <= y1; ++y)
 			{
-				float x = roundf(slope * (y - y0) + x0);
+				float x = (slope * (y - oldy0) + x0);
 				setPixel(surface, x, y, color);
+				if (y == bady0 || y == bady1 || y == 0 || y == surface->h - 1)
+				{
+					//drawRectA(surface, x, y, 0, 0, 5, 5, rgb(255, 0, 0));
+				}
 			}
 		}
 	}

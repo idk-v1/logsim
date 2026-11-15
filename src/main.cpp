@@ -15,18 +15,24 @@ int main()
 	int n = 8;
 
 	LogicBlock& startbtn = sim.add(LogicBlockButton);
+	startbtn.setPos(400, 400);
 
 	int64_t instr_data[]  = { 0x22, 0x22, 0x1F, 0x1F, 0x17, 0x05, 0x1F, 0x08, 0x1F, 0x0A, 0x02, 0x01 };
 	int64_t param1_data[] = { 0x02, 0x05, 0x02, 0x05, 0x00, 0x0B, 0x04, 0x00, 0x00, 0x00, 0x02, 0x00 };
-	int64_t param2_data[] = { 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00 };
+	int64_t param2_data[] = { 0x01, 0x0A, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00 };
 	LogicBlock& instr_rom  = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), instr_data);
 	LogicBlock& param1_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param1_data);
 	LogicBlock& param2_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param2_data);
 
 	LogicBlock& registers = createAddrMemory(sim, sim.getBoard(), n, n, 8);
 	LogicBlock& flags = createFlagRegister(sim, sim.getBoard());
+	registers.setPos(550, 15);
+	flags.setPos(550, 250);
 
 	LogicBlock& pc = createProgramCounter(sim, sim.getBoard(), n);
+	LogicBlock& romdelay = createNDelay(sim, sim.getBoard(), 5); // idk why this is needed
+	sim.connect(pc, "sigout", romdelay, "in");
+	sim.connect(startbtn, "out", romdelay, "in");
 	LogicBlock& incbtn = sim.add(LogicBlockButton);
 	sim.connect(incbtn, "out", pc, "inc");
 	LogicBlock& edit = createNBitNumberEditorCtrl(sim, sim.getBoard(), n);
@@ -50,13 +56,41 @@ int main()
 	param1_rom.setPos(400, 150);
 	param2_rom.setPos(400, 300);
 
+	// return method in common for all (except compare, jumps, and halt)
+	// writing to memory means instruction is done
+	sim.connect(registers, "wsigout", pc, "inc");
+
 	sim.connect(pc, "data[]", instr_rom, "addr[]");
 	sim.connect(pc, "data[]", param1_rom, "addr[]");
 	sim.connect(pc, "data[]", param2_rom, "addr[]");
 
+	
+
+	LogicBlock& loadimm = createInstrLoadImm(sim, sim.getBoard(), n);
+	sim.connect(instr_rom, "out[]", loadimm, "num[]");
+	sim.connect(param1_rom, "out[]", loadimm, "addr[]");
+	sim.connect(param2_rom, "out[]", loadimm, "data[]");
+	sim.connect(romdelay, "out", loadimm, "sigin");
+	sim.connect(loadimm, "addr[]", registers, "addr[]");
+	sim.connect(loadimm, "data[]", registers, "data[]");
+	sim.connect(loadimm, "sigout", registers, "write");
+
+	LogicBlock& move = createInstrMove(sim, sim.getBoard(), n);
+	sim.connect(instr_rom, "out[]", move, "num[]");
+	sim.connect(param1_rom, "out[]", move, "addrsrc[]");
+	sim.connect(param2_rom, "out[]", move, "addrdst[]");
+	sim.connect(romdelay, "out", move, "sigin");
+	sim.connect(registers, "out[]", move, "memin[]");
+	sim.connect(registers, "rsigout", move, "rsigin");
+	sim.connect(move, "addr[]", registers, "addr[]");
+	sim.connect(move, "data[]", registers, "data[]");
+	sim.connect(move, "wsigout", registers, "write");
+	sim.connect(move, "rsigout", registers, "read");
+
 
 
 	sim.recalc();
+	sim.sortConnections();
 
 	int mousex = 0, mousey = 0;
 	int oldmousex = 0, oldmousey = 0;
@@ -67,7 +101,7 @@ int main()
 	size_t tps = 30;
 	size_t lastTime = SDL_GetTicks();
 	size_t deltaTime = 0, scrollDT = 0;
-	bool pause = false;
+	bool pause = true;
 	bool running = true;
 	bool left = false, right = false, up = false, down = false;
 	float velx = 0, vely = 0;
@@ -105,6 +139,7 @@ int main()
 				case SDL_SCANCODE_LEFTBRACKET: sim.zoom(-1, surface->w, surface->h); break;
 				case SDL_SCANCODE_RIGHTBRACKET: sim.zoom(1, surface->w, surface->h); break;
 				case SDL_SCANCODE_P: pause = !pause; break;
+				case SDL_SCANCODE_RETURN: if (pause) { sim.tick(); ++ticks; } break;
 				}
 				break;
 

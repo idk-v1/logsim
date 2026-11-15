@@ -33,13 +33,62 @@ void LogicSim::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b,
 	const std::string& bIndex, bool aIn, bool bIn)
 {
 	if (!aIn && bIn)
-		connections.push_back(Connector(a, aIndex, b, bIndex, outin));
+		connections.push_back(Connector(&a, aIndex, &b, bIndex, outin));
 	else if (aIn && bIn)
-		connectionsIn.push_back(Connector(a, aIndex, b, bIndex, inin));
+		connectionsIn.push_back(Connector(&a, aIndex, &b, bIndex, inin));
 	else if (!aIn && !bIn)
-		connectionsOut.push_back(Connector(a, aIndex, b, bIndex, outout));
+		connectionsOut.push_back(Connector(&a, aIndex, &b, bIndex, outout));
 	else
-		connectionsInOut.push_back(Connector(a, aIndex, b, bIndex, inout));
+		connectionsInOut.push_back(Connector(&a, aIndex, &b, bIndex, inout));
+}
+
+void LogicSim::sortConnections()
+{
+	std::vector<Connector> tempIn;
+	tempIn.reserve(connectionsIn.size());
+	do
+	{
+		bool found = false;
+		for (size_t i = 0; i < connectionsIn.size() - 1; ++i)
+		{
+			if (connectionsIn.back().a == connectionsIn[i].b && 
+				connectionsIn.back().aIndex == connectionsIn[i].bIndex)
+			{
+				std::swap(connectionsIn.back(), connectionsIn[i]);
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+		{
+			tempIn.push_back(connectionsIn.back());
+			connectionsIn.pop_back();
+		}
+	} while (connectionsIn.size());
+	connectionsIn = tempIn;
+
+	std::vector<Connector> tempOut;
+	tempOut.reserve(connectionsOut.size());
+	do
+	{
+		bool found = false;
+		for (size_t i = 0; i < connectionsOut.size() - 1; ++i)
+		{
+			if (connectionsOut.back().a == connectionsOut[i].b && 
+				connectionsOut.back().aIndex == connectionsOut[i].bIndex)
+			{
+				std::swap(connectionsOut.back(), connectionsOut[i]);
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+		{
+			tempOut.push_back(connectionsOut.back());
+			connectionsOut.pop_back();
+		}
+	} while (connectionsOut.size());
+	connectionsOut = tempOut;
 }
 
 LogicBlock& LogicSim::add(const LogicBlock& block)

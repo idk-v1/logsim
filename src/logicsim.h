@@ -19,6 +19,8 @@ struct LogicSim
 	void connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b, 
 		const std::string& bIndex, bool aIn = false, bool bIn = true);
 
+	void sortConnections();
+
 	LogicBlock& add(const LogicBlock& block);
 
 	void tick();

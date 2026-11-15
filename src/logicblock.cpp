@@ -224,28 +224,30 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 	for (auto& b : blocks)
 		b.recalc(bx, by, expand);
 
-	size_t maxLabel = 1;
+	uint32_t maxLabel = 1;
 	auto in = input.begin();
 	auto out = output.begin();
 	for (int i = 0; i < input.size() || i < output.size(); ++i)
 	{
-		size_t inLen = 0;
-		size_t outLen = 0;
+		uint32_t inLen = 0;
+		uint32_t outLen = 0;
 
 		if (in != input.end())
 		{
-			inLen = in->first.size();
+			getTextSize(in->first.data(), fontsize, &inLen, NULL);
 			in = std::next(in);
 		}
 		if (out != output.end())
 		{
-			outLen = out->first.size();
+			getTextSize(out->first.data(), fontsize, &outLen, NULL);
 			out = std::next(out);
 		}
-		maxLabel = std::max(maxLabel, 2 + inLen + outLen);
+		maxLabel = std::max(maxLabel, 2 * fontw + inLen + outLen);
 	}
 	// fit name or at least 1 if blank
-	w = fontw * (int)std::max(maxLabel, label.size() + 1);
+	uint32_t labelw = 0;
+	getTextSize(label.data(), fontsize, &labelw, NULL);
+	w = (int)std::max(maxLabel, labelw);
 	if (expand)
 		for (auto& b : blocks)
 			if (b.w)

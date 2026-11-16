@@ -9,37 +9,33 @@ instructions:
 07 jumpifoverflow   [rom addr, flag overflow] [pc]
 08 add              [regA, regB]              [regA, flag overflow, flagzero]
 09 subtract         [regA, regB]              [regA, flag overflow, flagzero]
-0A increment        [regC]                    [regC, flag overflow, flagzero]
-0B decrement        [regC]                    [regC, flag overflow, flagzero]
-0C multiply         [regA, regB]              [regA (low), regB (high), flagzero]
-0D negate           [regA]                    [regA]
-0E lshift           [regA]                    [regA]
-0F rshift           [regA]                    [regA]
-10 rshift(signed)   [regA]                    [regA]
-11 lcycle           [regA]                    [regA]
-12 rcycle           [regA]                    [regA]
-13 xor              [regA, regB]              [regA]
-14 and              [regA, regB]              [regA]
-15 or               [regA, regB]              [regA]
-16 invert           [regA]                    [regA]
-17 compare          [regA, regB]              [flags less, greater, equal, zero]
-18 readflagzero     [flag zero]               [regD]
-19 readflagequal    [flag equal]              [regD]
-1A readflagless     [flag less]               [regD]
-1B readflaggreater  [flag greater]            [regD]
-1C readflagoverflow [flag overflow]           [regD]
-1D readpc           [pc]                      [regD]
+0A increment        [regA]                    [regC, flag overflow, flagzero]
+0B decrement        [regA]                    [regC, flag overflow, flagzero]
+0C multiply         [regA, regB]              [regC (low), regC+1 (high), flagzero]
+0D negate           [regA]                    [regB]
+0E lshift           [regA]                    [regB]
+0F rshift           [regA]                    [regB]
+10 rshift(signed)   [regA]                    [regB]
+11 lcycle           [regA]                    [regB]
+12 rcycle           [regA]                    [regB]
+13 xor              [regA, regB]              [regC]
+14 and              [regA, regB]              [regC]
+15 or               [regA, regB]              [regC]
+16 invert           [regA]                    [regB]
+17 compare          [regA, regB]              [flags less, greater, equal]
+18 readflagzero     [flag zero]               [regA]
+19 readflagequal    [flag equal]              [regA]
+1A readflagless     [flag less]               [regA]
+1B readflaggreater  [flag greater]            [regA]
+1C readflagoverflow [flag overflow]           [regA]
+1D readpc           [pc]                      [regA]
 1E memmove          [mem addr src]            [mem addr dest]
-1F move             [reg addr src]            [reg addr dest]
-20 load             [mem addr src]            [reg addr dest]
-21 store            [reg addr src]            [mem addr dest]
-22 loadimm          [imm*]                    [reg addr dest]    (* converted to rom addr)
+1F move             [regA]                    [regB]
+20 load             [mem addr src]            [regA]
+21 store            [regA]                    [mem addr dest]
+22 loadimm          [imm*]                    [regA]    (* converted to rom addr)
 
 flags: zero, equal, less, greater, overflow
-
-registers A and B for most operations
-register C for increment/decrement
-register D for reading flags/pc
 
 only 2 registers are needed for all math operations including both input and output
 1 is needed for program counter

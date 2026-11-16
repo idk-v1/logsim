@@ -52,7 +52,8 @@ void LogicSim::sortConnections()
 		for (size_t i = 0; i < connectionsIn.size() - 1; ++i)
 		{
 			if (connectionsIn.back().a == connectionsIn[i].b && 
-				connectionsIn.back().aIndex == connectionsIn[i].bIndex)
+				arrayToName(connectionsIn.back().aIndex) == 
+				arrayToName(connectionsIn[i].bIndex))
 			{
 				std::swap(connectionsIn.back(), connectionsIn[i]);
 				found = true;
@@ -75,7 +76,8 @@ void LogicSim::sortConnections()
 		for (size_t i = 0; i < connectionsOut.size() - 1; ++i)
 		{
 			if (connectionsOut.back().a == connectionsOut[i].b && 
-				connectionsOut.back().aIndex == connectionsOut[i].bIndex)
+				arrayToName(connectionsOut.back().aIndex) == 
+				arrayToName(connectionsOut[i].bIndex))
 			{
 				std::swap(connectionsOut.back(), connectionsOut[i]);
 				found = true;

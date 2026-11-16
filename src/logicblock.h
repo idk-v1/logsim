@@ -11,6 +11,14 @@ static std::string arrayToStr(const std::string& str, size_t i)
 	return str + "[" + std::to_string(i) + "]";
 }
 
+static std::string arrayToName(const std::string& str)
+{
+	size_t pos = str.find('[');
+	if (pos != std::string::npos)
+		return str.substr(0, pos);
+	return str;
+}
+
 // a[0] -> 0 | a[] -> -1
 static int getArrayNumber(const std::string& str)
 {

@@ -17,12 +17,14 @@ int main()
 	LogicBlock& startbtn = sim.add(LogicBlockButton);
 	startbtn.setPos(400, 400);
 
-	int64_t instr_data[]  = { 0x22, 0x22, 0x1F, 0x1F, 0x17, 0x05, 0x1F, 0x08, 0x1F, 0x0A, 0x02, 0x01 };
-	int64_t param1_data[] = { 0x02, 0x05, 0x02, 0x05, 0x00, 0x0B, 0x04, 0x00, 0x00, 0x00, 0x02, 0x00 };
-	int64_t param2_data[] = { 0x01, 0x0A, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00 };
+	int64_t instr_data[]  = { 0x22, 0x22, 0x17, 0x05, 0x08, 0x0A, 0x02, 0x01 };
+	int64_t param1_data[] = { 0x00, 0x02, 0x00, 0x07, 0x00, 0x00, 0x02, 0x00 };
+	int64_t param2_data[] = { 0x01, 0x0A, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00 };
+	int64_t param3_data[] = { 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
 	LogicBlock& instr_rom  = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), instr_data);
 	LogicBlock& param1_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param1_data);
 	LogicBlock& param2_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param2_data);
+	LogicBlock& param3_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param3_data);
 
 	LogicBlock& registers = createAddrMemory(sim, sim.getBoard(), n, n, 8);
 	LogicBlock& flags = createFlagRegister(sim, sim.getBoard());
@@ -45,6 +47,7 @@ int main()
 	sim.connect(read, "out", instr_rom, "read");
 	sim.connect(read, "out", param1_rom, "read");
 	sim.connect(read, "out", param2_rom, "read");
+	sim.connect(read, "out", param3_rom, "read");
 
 	edit.setExpand(true);
 	edit.setPos(15, 15);
@@ -55,14 +58,18 @@ int main()
 	instr_rom.setPos(400, 15);
 	param1_rom.setPos(400, 150);
 	param2_rom.setPos(400, 300);
+	param3_rom.setPos(400, 450);
 
 	// return method in common for all (except compare, jumps, and halt)
 	// writing to memory means instruction is done
-	sim.connect(registers, "wsigout", pc, "inc");
+	// not anymore
+	// multiply needs to write 2 things
+	//sim.connect(registers, "wsigout", pc, "inc");
 
 	sim.connect(pc, "data[]", instr_rom, "addr[]");
 	sim.connect(pc, "data[]", param1_rom, "addr[]");
 	sim.connect(pc, "data[]", param2_rom, "addr[]");
+	sim.connect(pc, "data[]", param3_rom, "addr[]");
 
 	
 
@@ -73,7 +80,9 @@ int main()
 	sim.connect(romdelay, "out", loadimm, "sigin");
 	sim.connect(loadimm, "addr[]", registers, "addr[]");
 	sim.connect(loadimm, "data[]", registers, "data[]");
-	sim.connect(loadimm, "sigout", registers, "write");
+	sim.connect(loadimm, "wsigout", registers, "write");
+	sim.connect(registers, "wsigout", loadimm, "wsigin");
+	sim.connect(loadimm, "sigout", pc, "inc");
 
 	LogicBlock& move = createInstrMove(sim, sim.getBoard(), n);
 	sim.connect(instr_rom, "out[]", move, "num[]");
@@ -82,10 +91,58 @@ int main()
 	sim.connect(romdelay, "out", move, "sigin");
 	sim.connect(registers, "out[]", move, "memin[]");
 	sim.connect(registers, "rsigout", move, "rsigin");
+	sim.connect(registers, "wsigout", move, "wsigin");
 	sim.connect(move, "addr[]", registers, "addr[]");
 	sim.connect(move, "data[]", registers, "data[]");
 	sim.connect(move, "wsigout", registers, "write");
 	sim.connect(move, "rsigout", registers, "read");
+	sim.connect(move, "sigout", pc, "inc");
+
+	LogicBlock& compare = createInstrCompare(sim, sim.getBoard(), n);
+	sim.connect(instr_rom, "out[]", compare, "num[]");
+	sim.connect(param1_rom, "out[]", compare, "addra[]");
+	sim.connect(param2_rom, "out[]", compare, "addrb[]");
+	sim.connect(registers, "out[]", compare, "memin[]");
+	sim.connect(registers, "rsigout", compare, "rsigin");
+	sim.connect(romdelay, "out", compare, "sigin");
+	sim.connect(compare, "addr[]", registers, "addr[]");
+	sim.connect(compare, "rsigout", registers, "read");
+	sim.connect(compare, "sigout", pc, "inc");
+	sim.connect(compare, "less", flags, "ldata");
+	sim.connect(compare, "sigout", flags, "lwrite");
+	sim.connect(compare, "equal", flags, "edata");
+	sim.connect(compare, "sigout", flags, "ewrite");
+	sim.connect(compare, "greater", flags, "gdata");
+	sim.connect(compare, "sigout", flags, "gwrite");
+
+
+	LogicBlock& jumpifgr = createInstrJumpGr(sim, sim.getBoard(), n);
+	sim.connect(instr_rom, "out[]", jumpifgr, "num[]");
+	sim.connect(param1_rom, "out[]", jumpifgr, "addr[]");
+	sim.connect(romdelay, "out", jumpifgr, "sigin");
+	sim.connect(flags, "greater", jumpifgr, "greater");
+	sim.connect(jumpifgr, "addr[]", pc, "data[]");
+	sim.connect(jumpifgr, "setout", pc, "set");
+	sim.connect(jumpifgr, "incout", pc, "inc");
+
+	LogicBlock& adder = createInstrAdd(sim, sim.getBoard(), n);
+	sim.connect(instr_rom, "out[]", adder, "num[]");
+	sim.connect(param1_rom, "out[]", adder, "addra[]");
+	sim.connect(param2_rom, "out[]", adder, "addrb[]");
+	sim.connect(param3_rom, "out[]", adder, "addro[]");
+	sim.connect(registers, "out[]", adder, "memin[]");
+	sim.connect(registers, "wsigout", adder, "wsigin");
+	sim.connect(registers, "rsigout", adder, "rsigin");
+	sim.connect(romdelay, "out", adder, "sigin");
+	sim.connect(adder, "addr[]", registers, "addr[]");
+	sim.connect(adder, "data[]", registers, "data[]");
+	sim.connect(adder, "wsigout", registers, "write");
+	sim.connect(adder, "rsigout", registers, "read");
+	sim.connect(adder, "sigout", pc, "inc");
+	sim.connect(adder, "zero", flags, "zdata");
+	sim.connect(adder, "sigout", flags, "zwrite");
+	sim.connect(adder, "over", flags, "odata");
+	sim.connect(adder, "sigout", flags, "owrite");
 
 
 

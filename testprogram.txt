@@ -52,14 +52,14 @@ after: 07
    // exit()
 07 01 halt
 
-00 22 00 01 XX
-01 22 02 0A XX
-02 17 00 02 XX
-03 05 07 XX XX
-04 08 00 01 01
-05 0A 00 XX XX
-06 02 02 XX XX
-07 01 XX XX XX
+00 22 00 01 XX | ldi
+01 22 02 0A XX | ldi
+02 17 00 02 XX | cmp
+03 05 07 XX XX | jgr
+04 08 00 01 01 | add
+05 0A 00 XX XX | inc
+06 02 02 XX XX | jmp
+07 01 XX XX XX | hlt
 
 loadimm: addr, data
 compare: addra, addrb

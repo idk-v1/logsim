@@ -15,7 +15,7 @@ int main()
 	int n = 8;
 
 	LogicBlock& startbtn = sim.add(LogicBlockButton);
-	startbtn.setPos(400, 400);
+	startbtn.setPos(250, 200);
 
 	int64_t instr_data[]  = { 0x22, 0x22, 0x17, 0x05, 0x08, 0x0A, 0x02, 0x01 };
 	int64_t param1_data[] = { 0x00, 0x02, 0x00, 0x07, 0x00, 0x00, 0x02, 0x00 };
@@ -28,11 +28,12 @@ int main()
 
 	LogicBlock& registers = createAddrMemory(sim, sim.getBoard(), n, n, 8);
 	LogicBlock& flags = createFlagRegister(sim, sim.getBoard());
-	registers.setPos(550, 15);
-	flags.setPos(550, 250);
+	registers.setPos(600, 15);
+	flags.setPos(550, 15);
 
 	LogicBlock& pc = createProgramCounter(sim, sim.getBoard(), n);
 	LogicBlock& romdelay = createNDelay(sim, sim.getBoard(), 5); // idk why this is needed
+	romdelay.setPos(300, 500);
 	sim.connect(pc, "sigout", romdelay, "in");
 	sim.connect(startbtn, "out", romdelay, "in");
 	LogicBlock& incbtn = sim.add(LogicBlockButton);
@@ -60,12 +61,6 @@ int main()
 	param2_rom.setPos(400, 300);
 	param3_rom.setPos(400, 450);
 
-	// return method in common for all (except compare, jumps, and halt)
-	// writing to memory means instruction is done
-	// not anymore
-	// multiply needs to write 2 things
-	//sim.connect(registers, "wsigout", pc, "inc");
-
 	sim.connect(pc, "data[]", instr_rom, "addr[]");
 	sim.connect(pc, "data[]", param1_rom, "addr[]");
 	sim.connect(pc, "data[]", param2_rom, "addr[]");
@@ -74,6 +69,7 @@ int main()
 	
 
 	LogicBlock& loadimm = createInstrLoadImm(sim, sim.getBoard(), n);
+	loadimm.setPos(500, 1000);
 	sim.connect(instr_rom, "out[]", loadimm, "num[]");
 	sim.connect(param1_rom, "out[]", loadimm, "addr[]");
 	sim.connect(param2_rom, "out[]", loadimm, "data[]");
@@ -85,6 +81,7 @@ int main()
 	sim.connect(loadimm, "sigout", pc, "inc");
 
 	LogicBlock& move = createInstrMove(sim, sim.getBoard(), n);
+	move.setPos(750, 1000);
 	sim.connect(instr_rom, "out[]", move, "num[]");
 	sim.connect(param1_rom, "out[]", move, "addrsrc[]");
 	sim.connect(param2_rom, "out[]", move, "addrdst[]");
@@ -99,6 +96,7 @@ int main()
 	sim.connect(move, "sigout", pc, "inc");
 
 	LogicBlock& compare = createInstrCompare(sim, sim.getBoard(), n);
+	compare.setPos(1000, 1000);
 	sim.connect(instr_rom, "out[]", compare, "num[]");
 	sim.connect(param1_rom, "out[]", compare, "addra[]");
 	sim.connect(param2_rom, "out[]", compare, "addrb[]");
@@ -117,6 +115,7 @@ int main()
 
 
 	LogicBlock& jumpifgr = createInstrJumpGr(sim, sim.getBoard(), n);
+	jumpifgr.setPos(1250, 1000);
 	sim.connect(instr_rom, "out[]", jumpifgr, "num[]");
 	sim.connect(param1_rom, "out[]", jumpifgr, "addr[]");
 	sim.connect(romdelay, "out", jumpifgr, "sigin");
@@ -125,7 +124,16 @@ int main()
 	sim.connect(jumpifgr, "setout", pc, "set");
 	sim.connect(jumpifgr, "incout", pc, "inc");
 
+	LogicBlock& jump = createInstrJump(sim, sim.getBoard(), n);
+	jump.setPos(1500, 1000);
+	sim.connect(instr_rom, "out[]", jump, "num[]");
+	sim.connect(param1_rom, "out[]", jump, "addr[]");
+	sim.connect(romdelay, "out", jump, "sigin");
+	sim.connect(jump, "addr[]", pc, "data[]");
+	sim.connect(jump, "setout", pc, "set");
+
 	LogicBlock& adder = createInstrAdd(sim, sim.getBoard(), n);
+	adder.setPos(1750, 1000);
 	sim.connect(instr_rom, "out[]", adder, "num[]");
 	sim.connect(param1_rom, "out[]", adder, "addra[]");
 	sim.connect(param2_rom, "out[]", adder, "addrb[]");
@@ -143,6 +151,24 @@ int main()
 	sim.connect(adder, "sigout", flags, "zwrite");
 	sim.connect(adder, "over", flags, "odata");
 	sim.connect(adder, "sigout", flags, "owrite");
+
+	LogicBlock& inc = createInstrInc(sim, sim.getBoard(), n);
+	inc.setPos(2000, 1000);
+	sim.connect(instr_rom, "out[]", inc, "num[]");
+	sim.connect(param1_rom, "out[]", inc, "addr[]");
+	sim.connect(registers, "out[]", inc, "memin[]");
+	sim.connect(registers, "wsigout", inc, "wsigin");
+	sim.connect(registers, "rsigout", inc, "rsigin");
+	sim.connect(romdelay, "out", inc, "sigin");
+	sim.connect(inc, "addr[]", registers, "addr[]");
+	sim.connect(inc, "data[]", registers, "data[]");
+	sim.connect(inc, "wsigout", registers, "write");
+	sim.connect(inc, "rsigout", registers, "read");
+	sim.connect(inc, "sigout", pc, "inc");
+	sim.connect(inc, "zero", flags, "zdata");
+	sim.connect(inc, "sigout", flags, "zwrite");
+	sim.connect(inc, "over", flags, "odata");
+	sim.connect(inc, "sigout", flags, "owrite");
 
 
 
@@ -265,9 +291,18 @@ int main()
 			rgb(255, 0, 0));
 		sim.draw(surface);
 
+		LogicBlock* held = sim.getHeld();
+		if (held)
+		{
+			drawTextFA(surface, 0, surface->h - 1, -1, 3, 1, rgb(255, 255, 255), "Held: %s", held->label.data());
+			drawTextFA(surface, 0, surface->h - 1, -1, 1, 1, rgb(255, 255, 255), "Pos: %d, %d", held->getRelPos().x, held->getRelPos().y);
+		}
 
-		drawTextFA(surface, 0, surface->h - 1, -1, 1, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
-		drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 1, 1, rgb(255, 255, 255), "TPS: %llu", tps);
+		drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 3, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
+		if (pause)
+			drawTextA(surface, surface->w - 1, surface->h - 1, 1, 1, 1, rgb(255, 255, 255), "Paused");
+		else
+			drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 1, 1, rgb(255, 255, 255), "TPS: %llu", tps);
 
 		SDL_UpdateWindowSurface(window);
 	}

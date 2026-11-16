@@ -203,3 +203,8 @@ void LogicSim::scroll(int x, int y)
 	}
 	setScroll(scrollx + x * (scale ? scale * 2 : 1), scrolly + y * (scale ? scale * 2 : 1));
 }
+
+LogicBlock* LogicSim::getHeld()
+{
+	return held;
+}

@@ -34,6 +34,7 @@ instructions:
 20 load             [mem addr src]            [regA]
 21 store            [regA]                    [mem addr dest]
 22 loadimm          [imm*]                    [regA]    (* converted to rom addr)
+23 clearflags       []                        [flags]
 
 flags: zero, equal, less, greater, overflow
 

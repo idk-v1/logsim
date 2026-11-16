@@ -1870,6 +1870,26 @@ static LogicBlock& createInstrJumpGr(LogicSim& sim, LogicBlock& parent, int n)
 	return jump;
 }
 
+// in: instr->num[], param1->addr[], sigin
+// out: addr[], setout
+static LogicBlock& createInstrJump(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& jump = parent.add(LogicBlock(
+		arrayToStr("num", n) + "|" + arrayToStr("addr", n) + "|sigin",
+		arrayToStr("addr", n) + "|setout", "jump"));
+
+	LogicBlock& jumpGateA = createNBitIsEqualConstDataSigGate(sim, jump, n, 0x02);
+
+	sim.connect(jump, "num[]", jumpGateA, "num[]", inin);
+	sim.connect(jump, "addr[]", jumpGateA, "data[]", inin);
+	sim.connect(jump, "sigin", jumpGateA, "sigin", inin);
+
+	sim.connect(jumpGateA, "data[]", jump, "addr[]", outout);
+	sim.connect(jumpGateA, "sigout", jump, "setout", outout);
+
+	return jump;
+}
+
 
 // in: instr->num[], param1->addra[], param2->addrb[], param3->addro[], memin[], wsigin, rsigin, sigin
 // out: addr[], data[], zero, over, wsigout, rsigout, sigout
@@ -1984,6 +2004,99 @@ static LogicBlock& createInstrAdd(LogicSim& sim, LogicBlock& parent, int n)
 	sim.connect(adder, "out[]", dataoutgate, "in[]");
 	sim.connect(adder, "sigout", addroutgate, "write");
 	sim.connect(addGateC, "data[]", addroutgate, "in[]");
+	sim.connect(dataoutgate, "out[]", add, "data[]", outout);
+	sim.connect(addroutgate, "out[]", add, "addr[]", outout);
+	sim.connect(addroutgate, "sigout", add, "wsigout", outout);
+
+	sim.connect(adder, "sigout", retflipflop, "set");
+	sim.connect(retflipflop, "out", retflipand, "a");
+	sim.connect(retflipand, "out", retflipflop, "reset");
+	sim.connect(add, "wsigin", retflipand, "b", inin);
+
+	sim.connect(adder, "out[]", iszero, "in[]");
+	sim.connect(retflipand, "out", flaggate, "write");
+	sim.connect(flaggate, "sigout", add, "sigout", outout);
+	sim.connect(iszero, "out", flaggate, "in[0]");
+	sim.connect(adder, "overflow", flaggate, "in[1]");
+	sim.connect(flaggate, "out[0]", add, "zero", outout);
+	sim.connect(flaggate, "out[1]", add, "over", outout);
+
+	return add;
+}
+
+// in: instr->num[], param1->addr[], memin[], wsigin, rsigin, sigin
+// out: addr[], data[], zero, over, wsigout, rsigout, sigout
+static LogicBlock& createInstrInc(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& add = parent.add(LogicBlock(
+		arrayToStr("num", n) + "|" + arrayToStr("addr", n) + "|" +
+		arrayToStr("memin", n) + "|wsigin|rsigin|sigin",
+		arrayToStr("addr", n) + "|" + arrayToStr("data", n) + 
+		"|zero|over|wsigout|rsigout|sigout", "increment"));
+
+	LogicBlock& addGateA = createNBitIsEqualConstDataSigGate(sim, add, n, 0x0A);
+
+	addGateA.setPos(15, 15);
+
+	LogicBlock& memA = createNBitMemory(sim, add, n);
+	LogicBlock& memAread = add.add(LogicBlockOn);
+	LogicBlock& memAgate = createNBitGate(sim, add, n);
+	LogicBlock& memAflip = createFlipFlop(sim, add);
+	LogicBlock& memAflipand = add.add(LogicBlockAnd);
+	LogicBlock& memAingate = createNBitGate(sim, add, n);
+	LogicBlock& memAindelay = createNDelayBuf(sim, add, 1, n);
+	memA.setPos(150, 15);
+	memAread.setPos(100, 150);
+	memAgate.setPos(250, 15);
+	memAflip.setPos(350, 15);
+	memAflipand.setPos(350, 150);
+	memAingate.setPos(450, 15);
+	memAindelay.setPos(550, 15);
+
+	LogicBlock& adder = createNBitAdd1(sim, add, n);
+	adder.setPos(650, 100);
+
+	LogicBlock& dataoutgate = createNBitGate(sim, add, n);
+	LogicBlock& addroutgate = createNBitGate(sim, add, n);
+	dataoutgate.setPos(750, 100);
+	addroutgate.setPos(750, 250);
+
+	LogicBlock& retflipflop = createFlipFlop(sim, add);
+	LogicBlock& retflipand = add.add(LogicBlockAnd);
+	LogicBlock& flaggate = createNBitGate(sim, add, 2);
+	LogicBlock& iszero = createNBitIsZero(sim, add, n);
+
+	sim.connect(add, "num[]", addGateA, "num[]", inin);
+	sim.connect(add, "addr[]", addGateA, "data[]", inin);
+	sim.connect(add, "sigin", addGateA, "sigin", inin);
+
+
+	sim.connect(addGateA, "data[]", memAgate, "in[]");
+	sim.connect(addGateA, "sigout", memAgate, "write");
+	sim.connect(memAgate, "sigout", add, "rsigout", outout);
+	sim.connect(memAgate, "out[]", add, "addr[]", outout);
+
+	sim.connect(memAgate, "sigout", memAflip, "set");
+	sim.connect(memAflip, "out", memAflipand, "a");
+	sim.connect(memAflipand, "out", memAflip, "reset");
+	sim.connect(add, "rsigin", memAflipand, "b", inin);
+	sim.connect(memAflipand, "out", memAingate, "write");
+	sim.connect(add, "memin[]", memAindelay, "in[]", inin);
+	sim.connect(memAindelay, "out[]", memAingate, "in[]");
+	sim.connect(memAingate, "out[]", memA, "data[]");
+	sim.connect(memAingate, "sigout", memA, "write");
+	sim.connect(memAread, "out", memA, "read");
+
+	sim.connect(memAgate, "sigout", add, "rsigout", outout);
+	sim.connect(memAgate, "out[]", add, "addr[]", outout);
+
+	sim.connect(memA, "wsigout", adder, "sigin");
+	sim.connect(memA, "out[]", adder, "a[]");
+
+	sim.connect(adder, "sigout", dataoutgate, "write");
+	sim.connect(adder, "out[]", dataoutgate, "in[]");
+	sim.connect(adder, "sigout", addroutgate, "write");
+	sim.connect(addGateA, "data[]", addroutgate, "in[]");
 	sim.connect(dataoutgate, "out[]", add, "data[]", outout);
 	sim.connect(addroutgate, "out[]", add, "addr[]", outout);
 	sim.connect(addroutgate, "sigout", add, "wsigout", outout);

@@ -33,6 +33,8 @@ struct LogicSim
 	void setScroll(int x, int y);
 	void scroll(int x, int y);
 
+	LogicBlock* getHeld();
+
 private:
 	bool needsRecalc = true;
 	int scale = 0;

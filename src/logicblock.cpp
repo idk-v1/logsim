@@ -194,21 +194,35 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 {
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
+	Uint32 bgColorOn = rgb(63, 63, 63);
+	Uint32 bgColorOff = rgb(31, 31, 31);
+	Uint32 titlebarColor = rgb(15, 15, 15);
+	Uint32 inputsColor = rgb(63, 15, 15);
+	Uint32 outputsColor = rgb(63, 15, 15);
+	Uint32 expandButtonColor = rgb(95, 95, 95);
+	Uint32 textColor = rgb(255, 255, 255);
+	Uint32 outlineColor = rgb(127, 127, 127);
+	Uint32 outlineHeldColor = rgb(127, 255, 31);
 
 	// label == on, label == toggle
 	if (label == 8 || (label == 10 && output[0].data))
-		drawRect(surface, bx, by, w, h, rgb(63, 63, 63)); // bg
+		drawRect(surface, bx, by, w, h, bgColorOn); // bg
 	else
-		drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
-	drawRect(surface, bx, by, w, fonth, rgb(15, 15, 15)); // titlebar
-	drawRect(surface, bx, by + fonth, fontw, h - fonth, rgb(63, 15, 15)); // inputs
-	drawRect(surface, bx + w - fontw, by + fonth, fontw, h - fonth, rgb(15, 15, 63)); // outputs
+		drawRect(surface, bx, by, w, h, bgColorOff); // bg
+	drawRect(surface, bx, by, w, fonth, titlebarColor); // titlebar
+	drawRect(surface, bx, by + fonth, fontw, h - fonth, inputsColor); // inputs
+	drawRect(surface, bx + w - fontw, by + fonth, fontw, h - fonth, outputsColor); // outputs
 	if (blocks.size())
 	{
-		drawRect(surface, bx + w - fontw, by, fontw, fonth, rgb(95, 95, 95));
-		drawText(surface, bx + w - fontw, by, fontsize, rgb(255, 255, 255), expand ? "-" : "+");
+		// expand button
+		drawRect(surface, bx + w - fontw, by, fontw, fonth, expandButtonColor);
+		drawRect(surface, bx + w - fontw, 
+			by + fonth / 2 - ceilf(fontw / 6.f), fontw, fontw / 3, textColor);
+		if (expand)
+			drawRect(surface, bx + w - fontw + fontw / 2 - floor(fontw / 6.f), 
+				by + fonth / 2 - ceil(fontw / 2.f), fontw / 3, fontw, textColor);
 	}
-	drawText(surface, bx + fontw, by, fontsize, rgb(255, 255, 255), templs[label].name.data()); // title
+	drawText(surface, bx + fontw, by, fontsize, textColor, templs[label].name.data()); // title
 
 	int index = 0;
 	for (int i = 0; i < inputSize; ++i)
@@ -217,7 +231,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
 			input[i].data ? on : off);
 		drawTextA(surface, xy.x + fontw, xy.y, -1, 0, fontsize,
-			rgb(255, 255, 255), templs[label].input[i].data());
+			textColor, templs[label].input[i].data());
 		++index;
 	}
 	index = 0;
@@ -227,7 +241,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
 			output[i].data ? on : off);
 		drawTextA(surface, xy.x - fontw, xy.y, 1, 0, fontsize,
-			rgb(255, 255, 255), templs[label].output[i].data());
+			textColor, templs[label].output[i].data());
 
 		++index;
 	}
@@ -237,7 +251,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 			b.draw(surface, held);
 
 	drawRectOut(surface, bx - 1, by - 1, w + 2, h + 2, 1, 
-		held == this ? rgb(127, 255, 31) : rgb(127, 127, 127));
+		held == this ? outlineHeldColor : outlineColor);
 }
 
 XYCoord LogicBlock::getConnectionPos(int index, bool isInput)

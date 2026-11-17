@@ -34,16 +34,6 @@ void Connector::draw(SDL_Surface* surface)
 
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
-	if (aIn && bIn)
-	{
-		on = rgb(0, 255, 255);
-		off = rgb(0, 63, 63);
-	}
-	else if (!aIn && !bIn)
-	{
-		on = rgb(255, 127, 0);
-		off = rgb(63, 31, 0);
-	}
 
 	WriteData** aport = aIn ? &a->input : &a->output;
 

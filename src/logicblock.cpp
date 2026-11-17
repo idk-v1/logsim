@@ -8,7 +8,7 @@ int LogicBlock::fonth = 0;
 int LogicBlock::fontsize = 0;
 int LogicBlock::posMul = 1;
 
-size_t LogicBlock::blockCount = -12;
+size_t LogicBlock::blockCount = 0;
 
 std::vector<LogicTemplate> LogicBlock::templs;
 
@@ -19,17 +19,13 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 	{
 		this->label = templs.size();
 		LogicTemplate temp(in, out, label);
+		input.resize(temp.input.size());
+		output.resize(temp.output.size());
+		//inputSize = temp.input.size();
+		//outputSize = temp.output.size();
+		//input = new WriteData[inputSize]();
+		//output = new WriteData[outputSize]();
 		templs.push_back(temp);
-		if ((int64_t)blockCount >= 0)
-		{
-			input.resize(temp.input.size());
-			output.resize(temp.output.size());
-			//inputSize = temp.input.size();
-			//outputSize = temp.output.size();
-			//input = new WriteData[inputSize]();
-			//output = new WriteData[outputSize]();
-			templs.push_back(temp);
-		}
 	}
 	else
 	{
@@ -42,13 +38,10 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 		++templs[this->label].count;
 	}
 
-	if ((int64_t)blockCount >= 0)
-	{
-		if (label == "on")
-			output[0].data = 1;
-	}
+	if (label == "on")
+		output[0].data = 1;
 
-	++blockCount;
+	++blockCount; 
 }
 
 void LogicBlock::tick()
@@ -208,6 +201,9 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 
 void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 {
+	if (bx >= surface->w || by >= surface->h || bx + w < 0 || by + h < 0)
+		return;
+
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
 	Uint32 bgColorOn = rgb(63, 63, 63);

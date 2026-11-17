@@ -18,6 +18,7 @@ LogicSim::LogicSim()
 	temp.push_back(LogicBlockToggle);
 	temp.push_back(LogicBlockButton);
 
+	LogicBlock::blockCount = 0;
 	board = LogicBlock("", "", "Board");
 	board.setExpand(true);
 

@@ -19,14 +19,18 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 	{
 		this->label = templs.size();
 		LogicTemplate temp(in, out, label);
-		input.resize(temp.input.size());
-		output.resize(temp.output.size());
+		inputSize = temp.input.size();
+		outputSize = temp.output.size();
+		input = new WriteData[inputSize]();
+		output = new WriteData[outputSize]();
 		templs.push_back(temp);
 	}
 	else
 	{
-		input.resize(templs[this->label].input.size());
-		output.resize(templs[this->label].output.size());
+		inputSize = templs[this->label].input.size();
+		outputSize = templs[this->label].output.size();
+		input = new WriteData[inputSize]();
+		output = new WriteData[outputSize]();
 		++templs[this->label].count;
 	}
 
@@ -148,16 +152,16 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		b.recalc(bx, by, expand);
 
 	uint32_t maxLabel = 1;
-	for (int i = 0; i < input.size() || i < output.size(); ++i)
+	for (int i = 0; i < inputSize || i < outputSize; ++i)
 	{
 		uint32_t inLen = 0;
 		uint32_t outLen = 0;
 
-		if (i < input.size())
+		if (i < inputSize)
 		{
 			getTextSize(templs[label].input[i].data(), fontsize, &inLen, NULL);
 		}
-		if (i < output.size())
+		if (i < outputSize)
 		{
 			getTextSize(templs[label].output[i].data(), fontsize, &outLen, NULL);
 		}
@@ -176,7 +180,7 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 	w += 4 * fontw;
 
 	// fit max of input or output length or at least 1
-	h = (fonth - fontw) + fonth * (int)std::max(1ull, std::max(input.size(), output.size()));
+	h = (fonth - fontw) + fonth * std::max(1, std::max(inputSize, outputSize));
 	if (expand)
 		for (auto& b : blocks)
 			if (b.h)
@@ -207,7 +211,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	drawText(surface, bx + fontw, by, fontsize, rgb(255, 255, 255), templs[label].name.data()); // title
 
 	int index = 0;
-	for (int i = 0; i < input.size(); ++i)
+	for (int i = 0; i < inputSize; ++i)
 	{
 		XYCoord xy = getConnectionPos(index, true);
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
@@ -217,7 +221,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		++index;
 	}
 	index = 0;
-	for (int i = 0; i < output.size(); ++i)
+	for (int i = 0; i < outputSize; ++i)
 	{
 		XYCoord xy = getConnectionPos(index, false);
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
@@ -254,7 +258,7 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	int index = 0;
 	if (isInput)
 	{
-		for (int i = 0; i < input.size(); ++i)
+		for (int i = 0; i < inputSize; ++i)
 		{
 			if (templs[label].input[i] == name)
 				return index;
@@ -263,7 +267,7 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	}
 	else
 	{
-		for (int i = 0; i < output.size(); ++i)
+		for (int i = 0; i < outputSize; ++i)
 		{
 			if (templs[label].output[i] == name)
 				return index;
@@ -278,11 +282,11 @@ void LogicBlock::resetWrittenTo()
 	for (auto& b : blocks)
 		b.resetWrittenTo();
 
-	for (auto& i : input)
-		i.written = false;
+	for (int i = 0; i < inputSize; ++i)
+		input[i].written = false;
 
-	for (auto& o : output)
-		o.written = false;
+	for (int i = 0; i < outputSize; ++i)
+		output[i].written = false;
 }
 
 bool LogicBlock::isHidden() const

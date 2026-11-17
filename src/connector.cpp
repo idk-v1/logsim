@@ -19,8 +19,8 @@ Connector::Connector(LogicBlock* a, const std::string& aIndex,
 
 void Connector::tick()
 {
-	std::vector<WriteData>* aport = aIn ? &a->input : &a->output;
-	std::vector<WriteData>* bport = bIn ? &b->input : &b->output;
+	WriteData** aport = aIn ? &a->input : &a->output;
+	WriteData** bport = bIn ? &b->input : &b->output;
 
 	if ((*aport)[aIndex].data || !(*bport)[bIndex].written)
 		(*bport)[bIndex].data = (*aport)[aIndex].data;
@@ -45,7 +45,7 @@ void Connector::draw(SDL_Surface* surface)
 		off = rgb(63, 31, 0);
 	}
 
-	std::vector<WriteData>* aport = aIn ? &a->input : &a->output;
+	WriteData** aport = aIn ? &a->input : &a->output;
 
 	XYCoord p0 = a->getConnectionPos(aIndex, aIn);
 	XYCoord p1 = b->getConnectionPos(bIndex, bIn);

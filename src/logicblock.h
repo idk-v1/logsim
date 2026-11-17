@@ -92,9 +92,10 @@ struct LogicBlock
 	XYCoord getRelPos() const;
 	XYCoord getSize() const;
 
-	std::vector<WriteData> input;
-	std::vector<WriteData> output;
-	int label;
+	WriteData* input = NULL;
+	WriteData* output = NULL;
+	int inputSize = 0;
+	int outputSize = 0;
 
 	static void setFontSize(int w, int h, int fontsize, int posMul);
 
@@ -109,6 +110,8 @@ private:
 	int findTempl(const std::string& name);
 
 	static int fontw, fonth, fontsize, posMul;
+
+	int label = -1;
 
 	int x = 5, y = 5, w = 0, h = 0, bx = 0, by = 0;
 	bool expand = false, hidden = false;

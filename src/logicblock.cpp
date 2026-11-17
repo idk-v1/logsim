@@ -13,19 +13,28 @@ LogicBlock::LogicBlock(const std::string& label)
 	if (label == "and" || label == "or" || label == "xor" || label == "nor" || 
 		label == "nand" || label == "xnor")
 	{
-		input["a"] = { 0 };
-		input["b"] = { 0 };
-		output["out"] = { 0 };
+		input = { {0}, {0} };
+		inputLabels = {"a", "b"};
+		output = { {0} };
+		outputLabels = {"out"};
 	}
 	else if (label == "not" || label == "delay")
 	{
-		input["in"] = { 0 };
-		output["out"] = { 0 };
+		input = { {0} };
+		inputLabels = { "in" };
+		output = { {0} };
+		outputLabels = { "out" };
 	}
 	else if (label == "on")
-		output["out"] = { 1, 0 };
+	{
+		output = { {1, 0} };
+		outputLabels = { "out" };
+	}
 	else if (label == "off" || label == "toggle" || label == "button")
-		output["out"] = { 0 };
+	{
+		output = { {0} };
+		outputLabels = { "out" };
+	}
 
 	this->label = label;
 }
@@ -57,10 +66,16 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 				if (arraySize)
 				{
 					for (int i = 0; i < arraySize; ++i)
-						input[arrayToStr(std::string(start, nameEnd - start), i)] = { 0 };
+					{
+						input.push_back({ 0 });
+						inputLabels.push_back(arrayToStr(std::string(start, nameEnd - start), i));
+					}
 				}
 				else
-					input[std::string(start, nameEnd - start)] = { 0 };
+				{
+					input.push_back({ 0 });
+					inputLabels.push_back(std::string(start, nameEnd - start));
+				}
 			}
 			start = c + 1;
 
@@ -94,10 +109,16 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 				if (arraySize)
 				{
 					for (int i = 0; i < arraySize; ++i)
-						output[arrayToStr(std::string(start, nameEnd - start), i)] = { 0 };
+					{
+						output.push_back({0});
+						outputLabels.push_back(arrayToStr(std::string(start, nameEnd - start), i));
+					}
 				}
 				else
-					output[std::string(start, nameEnd - start)] = { 0 };
+				{
+					output.push_back({0});
+					outputLabels.push_back(std::string(start, nameEnd - start));
+				}
 			}
 			start = c + 1;
 
@@ -112,23 +133,23 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 void LogicBlock::tick()
 {
 	if (label == "and")
-		output["out"].data = input["a"].data && input["b"].data;
+		output[0].data = input[0].data && input[1].data;
 	else if (label == "or")
-		output["out"].data = input["a"].data || input["b"].data;
+		output[0].data = input[0].data || input[1].data;
 	else if (label == "xor")
-		output["out"].data = input["a"].data != input["b"].data;
+		output[0].data = input[0].data != input[1].data;
 	else if (label == "nor")
-		output["out"].data = !(input["a"].data || input["b"].data);
+		output[0].data = !(input[0].data || input[1].data);
 	else if (label == "nand")
-		output["out"].data = !(input["a"].data && input["b"].data);
+		output[0].data = !(input[0].data && input[1].data);
 	else if (label == "xnor")
-		output["out"].data = !(input["a"].data != input["b"].data);
+		output[0].data = !(input[0].data != input[1].data);
 	else if (label == "not")
-		output["out"].data = !input["in"].data;
+		output[0].data = !input[0].data;
 	else if (label == "delay")
-		output["out"].data = input["in"].data;
+		output[0].data = input[0].data;
 	else if (label == "button")
-		output["out"].data = 0;
+		output[0].data = 0;
 	else
 		for (auto& b : blocks)
 			b.tick();
@@ -169,27 +190,16 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 	if (label == "toggle")
 	{
 		if (mouseOverBody && clickOnce)
-			output["out"].data = !output["out"].data;
+			output[0].data = !output[0].data;
 	}
 	else if (label == "button")
-		output["out"].data |= (mouseOverBody && clickOnce);
+		output[0].data |= (mouseOverBody && clickOnce);
 }
 
 LogicBlock& LogicBlock::add(const LogicBlock& block)
 {
 	blocks.push_back(block);
 	return blocks.back();
-}
-
-void LogicBlock::print()
-{
-	printf("%s\nIn:\n", label.data());
-	for (auto& in : input)
-		printf("[%s]: %d\n", in.first.data(), (int)in.second.data);
-	printf("Out\n");
-	for (auto& out : output)
-		printf("[%s]: %d\n", out.first.data(), (int)out.second.data);
-	printf("\n");
 }
 
 void LogicBlock::setPos(int x, int y)
@@ -225,22 +235,18 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		b.recalc(bx, by, expand);
 
 	uint32_t maxLabel = 1;
-	auto in = input.begin();
-	auto out = output.begin();
 	for (int i = 0; i < input.size() || i < output.size(); ++i)
 	{
 		uint32_t inLen = 0;
 		uint32_t outLen = 0;
 
-		if (in != input.end())
+		if (i < input.size())
 		{
-			getTextSize(in->first.data(), fontsize, &inLen, NULL);
-			in = std::next(in);
+			getTextSize(inputLabels[i].data(), fontsize, &inLen, NULL);
 		}
-		if (out != output.end())
+		if (i < output.size())
 		{
-			getTextSize(out->first.data(), fontsize, &outLen, NULL);
-			out = std::next(out);
+			getTextSize(outputLabels[i].data(), fontsize, &outLen, NULL);
 		}
 		maxLabel = std::max(maxLabel, 2 * fontw + inLen + outLen);
 	}
@@ -272,7 +278,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
 
-	if (label == "on" || (label == "toggle" && output["out"].data))
+	if (label == "on" || (label == "toggle" && output[0].data))
 		drawRect(surface, bx, by, w, h, rgb(63, 63, 63)); // bg
 	else
 		drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
@@ -287,23 +293,23 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	drawText(surface, bx + fontw, by, fontsize, rgb(255, 255, 255), label.data()); // title
 
 	int index = 0;
-	for (auto& i : input)
+	for (int i = 0; i < input.size(); ++i)
 	{
 		XYCoord xy = getConnectionPos(index, true);
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
-			i.second.data ? on : off);
+			input[i].data ? on : off);
 		drawTextA(surface, xy.x + fontw, xy.y, -1, 0, fontsize,
-			rgb(255, 255, 255), i.first.data());
+			rgb(255, 255, 255), inputLabels[i].data());
 		++index;
 	}
 	index = 0;
-	for (auto& i : output)
+	for (int i = 0; i < output.size(); ++i)
 	{
 		XYCoord xy = getConnectionPos(index, false);
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
-			i.second.data ? on : off);
+			output[i].data ? on : off);
 		drawTextA(surface, xy.x - fontw, xy.y, 1, 0, fontsize,
-			rgb(255, 255, 255), i.first.data());
+			rgb(255, 255, 255), outputLabels[i].data());
 
 		++index;
 	}
@@ -334,23 +340,22 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	int index = 0;
 	if (isInput)
 	{
-		for (auto& i : input)
+		for (int i = 0; i < input.size(); ++i)
 		{
-			if (i.first == name)
+			if (inputLabels[i] == name)
 				return index;
 			++index;
 		}
 	}
 	else
 	{
-		for (auto& i : output)
+		for (int i = 0; i < output.size(); ++i)
 		{
-			if (i.first == name)
+			if (outputLabels[i] == name)
 				return index;
 			++index;
 		}
 	}
-	printf("%s.%c[%s] doesn't exist\n", label.data(), isInput ? 'i' : 'o', name.data());
 	return -1;
 }
 
@@ -360,10 +365,10 @@ void LogicBlock::resetWrittenTo()
 		b.resetWrittenTo();
 
 	for (auto& i : input)
-		i.second.written = false;
+		i.written = false;
 
 	for (auto& o : output)
-		o.second.written = false;
+		o.written = false;
 }
 
 bool LogicBlock::isHidden() const

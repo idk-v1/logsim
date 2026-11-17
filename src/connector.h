@@ -9,7 +9,8 @@
 
 struct Connector
 {
-	Connector(LogicBlock* a, const std::string& aIndex, LogicBlock* b, const std::string& bIndex, bool aIn, bool bIn);
+	Connector(LogicBlock* a, const std::string& aIndex, LogicBlock* b, 
+		const std::string& bIndex, bool aIn, bool bIn);
 
 	void tick();
 
@@ -17,7 +18,7 @@ struct Connector
 
 	// i hate references
 	LogicBlock* a, * b;
-	std::string aIndex, bIndex;
+	int aIndex, bIndex;
 	bool aIn, bIn;
 };
 

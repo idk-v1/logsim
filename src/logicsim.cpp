@@ -32,14 +32,38 @@ void LogicSim::recalc()
 void LogicSim::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b,
 	const std::string& bIndex, bool aIn, bool bIn)
 {
-	if (!aIn && bIn)
-		connections.push_back(Connector(&a, aIndex, &b, bIndex, outin));
-	else if (aIn && bIn)
-		connectionsIn.push_back(Connector(&a, aIndex, &b, bIndex, inin));
-	else if (!aIn && !bIn)
-		connectionsOut.push_back(Connector(&a, aIndex, &b, bIndex, outout));
+	if (isArray(aIndex) && getArrayNumber(aIndex) == -1 &&
+		isArray(bIndex) && getArrayNumber(bIndex) == -1)
+	{
+		for (int i = 0; ; ++i)
+		{
+			std::string newAIndex = arrayToStr(arrayToName(aIndex), i);
+			std::string newBIndex = arrayToStr(arrayToName(bIndex), i);
+			if (a.getConnectionIndex(newAIndex, aIn) == -1 ||
+				b.getConnectionIndex(newBIndex, bIn) == -1)
+				break;
+	
+			if (!aIn && bIn)
+				connections.push_back(Connector(&a, newAIndex, &b, newBIndex, outin));
+			else if (aIn && bIn)
+				connectionsIn.push_back(Connector(&a, newAIndex, &b, newBIndex, inin));
+			else if (!aIn && !bIn)
+				connectionsOut.push_back(Connector(&a, newAIndex, &b, newBIndex, outout));
+			else
+				connectionsInOut.push_back(Connector(&a, newAIndex, &b, newBIndex, inout));
+		}
+	}
 	else
-		connectionsInOut.push_back(Connector(&a, aIndex, &b, bIndex, inout));
+	{
+		if (!aIn && bIn)
+			connections.push_back(Connector(&a, aIndex, &b, bIndex, outin));
+		else if (aIn && bIn)
+			connectionsIn.push_back(Connector(&a, aIndex, &b, bIndex, inin));
+		else if (!aIn && !bIn)
+			connectionsOut.push_back(Connector(&a, aIndex, &b, bIndex, outout));
+		else
+			connectionsInOut.push_back(Connector(&a, aIndex, &b, bIndex, inout));
+	}
 }
 
 void LogicSim::sortConnections()
@@ -52,8 +76,7 @@ void LogicSim::sortConnections()
 		for (size_t i = 0; i < connectionsIn.size() - 1; ++i)
 		{
 			if (connectionsIn.back().a == connectionsIn[i].b && 
-				arrayToName(connectionsIn.back().aIndex) == 
-				arrayToName(connectionsIn[i].bIndex))
+				connectionsIn.back().aIndex == connectionsIn[i].bIndex)
 			{
 				std::swap(connectionsIn.back(), connectionsIn[i]);
 				found = true;
@@ -76,8 +99,7 @@ void LogicSim::sortConnections()
 		for (size_t i = 0; i < connectionsOut.size() - 1; ++i)
 		{
 			if (connectionsOut.back().a == connectionsOut[i].b && 
-				arrayToName(connectionsOut.back().aIndex) == 
-				arrayToName(connectionsOut[i].bIndex))
+				connectionsOut.back().aIndex == connectionsOut[i].bIndex)
 			{
 				std::swap(connectionsOut.back(), connectionsOut[i]);
 				found = true;
@@ -120,7 +142,8 @@ void LogicSim::tick()
 void LogicSim::interact(int mousex, int mousey, int oldmousex, int oldmousey, bool click, bool oldclick)
 {
 	bool found = false;
-	board.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, &held);
+	if (click)
+		board.interact(mousex, mousey, oldmousex, oldmousey, click, oldclick, found, &held);
 	if (found || needsRecalc)
 		recalc();
 	else

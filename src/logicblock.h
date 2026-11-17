@@ -4,7 +4,7 @@
 
 #include <string>
 #include <list>
-#include <map>
+#include <vector>
 
 static std::string arrayToStr(const std::string& str, size_t i)
 {
@@ -46,31 +46,6 @@ struct XYCoord
 	int x, y;
 };
 
-struct strCmpWithArray
-{
-	bool operator()(const std::string& a, const std::string& b) const
-	{
-		if (isArray(a) && isArray(b))
-		{
-			for (const char* ca = a.data(), *cb = b.data(); *ca && *cb; ++ca, ++cb)
-			{
-				if (*ca == *cb)
-				{
-					if (*ca == '[')
-					{
-						int ai = getArrayNumber(a);
-						int bi = getArrayNumber(b);
-						return (ai < bi);
-					}
-				}
-				else
-					return (*ca < *cb);
-			}
-		}
-		return a < b;
-	}
-};
-
 struct WriteData
 {
 	bool data = 0, written = 0;
@@ -87,8 +62,6 @@ struct LogicBlock
 		bool click, bool oldclick, bool& found, LogicBlock** held);
 
 	LogicBlock& add(const LogicBlock& block);
-
-	void print();
 
 	void setPos(int x, int y);
 
@@ -111,8 +84,10 @@ struct LogicBlock
 	XYCoord getRelPos() const;
 	XYCoord getSize() const;
 
-	std::map<std::string, WriteData, strCmpWithArray> input;
-	std::map<std::string, WriteData, strCmpWithArray> output;
+	std::vector<WriteData> input;
+	std::vector<WriteData> output;
+	std::vector<std::string> inputLabels;
+	std::vector<std::string> outputLabels;
 	std::string label;
 
 	static void setFontSize(int w, int h, int fontsize, int posMul);

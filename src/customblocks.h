@@ -12,11 +12,13 @@ static LogicBlock& createNBitNumber(LogicSim& sim, LogicBlock& parent, int n, in
 	bool neg = n < 0;
 	for (int i = 0; i < n; ++i)
 	{
-		num.output[arrayToStr("out", i)].data = (input & 1);
+		//num.output[arrayToStr("out", i)].data = (input & 1);
+		num.output[i].data = (input & 1);
 		input >>= 1;
 	}
 	if (neg && n != 64)
-		num.output[arrayToStr("out", n - 1)].data = neg;
+		//num.output[arrayToStr("out", n - 1)].data = neg;
+		num.output[n - 1].data = neg;
 
 	return num;
 }
@@ -1629,8 +1631,8 @@ static LogicBlock& createInstrLoadImm(LogicSim& sim, LogicBlock& parent, int n)
 	LogicBlock& loadimm = parent.add(LogicBlock(
 		arrayToStr("num", n) + "|" + arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|wsigin|sigin",
 		arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|wsigout|sigout", "loadimm"));
-	LogicBlock& loadimmGateA = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x22);
-	LogicBlock& loadimmGateB = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x22);
+	LogicBlock& loadimmGateA = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x23);
+	LogicBlock& loadimmGateB = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x23);
 	// only needs these 3 below bc data out could interfere if left on a few more cycles
 	// didn't cause a problem, just could
 	LogicBlock& loadimmOutGateA = createNBitGate(sim, loadimm, n);
@@ -2234,49 +2236,4 @@ static LogicBlock& createNBitNumberEditorCtrl(LogicSim& sim, LogicBlock& parent,
 	sim.connect(edit, "sigout", ctrl, "sigout", outout);
 
 	return ctrl;
-}
-
-static int64_t readNBitOutput(const LogicBlock& block, int n)
-{
-	int64_t num = 0;
-	bool neg = block.input.at(arrayToStr("in", n - 1)).data;
-	for (int i = n - 1; i >= 0; --i)
-	{
-		num <<= 1ull;
-		bool value = block.input.at(arrayToStr("in", i)).data;
-		if (neg)
-			value = !value;
-		num |= (int64_t)value;
-	}
-	if (neg)
-		num = -(num + 1);
-	return num;
-}
-
-static int64_t readNBitInput(const LogicBlock& block, int n)
-{
-	int64_t num = 0;
-	bool neg = block.output.at(arrayToStr("out", n - 1)).data;
-	for (int i = n - 1; i >= 0; --i)
-	{
-		num <<= 1ull;
-		bool value = block.output.at(arrayToStr("out", i)).data;
-		if (neg)
-			value = !value;
-		num |= (int64_t)value;
-	}
-	if (neg)
-		num = -(num + 1);
-	return num;
-}
-
-static void drawNumberLabel(SDL_Surface* surface, LogicBlock& block, int n)
-{
-	XYCoord coord = block.getConnectionPos(0, false);
-	int64_t value = 0;
-	if (block.output.size())
-		value = readNBitInput(block, n);
-	else
-		value = readNBitOutput(block, n);
-	drawTextFA(surface, coord.x - font_w / 2, coord.y - font_h * 3 / 2, 1, -1, 0, rgb(255, 255, 255), "%lld", value);
 }

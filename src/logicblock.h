@@ -92,10 +92,12 @@ struct LogicBlock
 	XYCoord getRelPos() const;
 	XYCoord getSize() const;
 
-	WriteData* input = NULL;
-	WriteData* output = NULL;
-	int inputSize = 0;
-	int outputSize = 0;
+	std::vector<WriteData> input;
+	std::vector<WriteData> output;
+	//WriteData* input = NULL;
+	//WriteData* output = NULL;
+	//int inputSize = 0;
+	//int outputSize = 0;
 
 	static void setFontSize(int w, int h, int fontsize, int posMul);
 

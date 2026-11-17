@@ -19,7 +19,6 @@ struct Connector
 	// i hate references
 	LogicBlock* a, * b;
 	int aIndex, bIndex;
-	bool aIn, bIn;
 };
 
 #define inout true, false

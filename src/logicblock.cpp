@@ -19,23 +19,34 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 	{
 		this->label = templs.size();
 		LogicTemplate temp(in, out, label);
-		inputSize = temp.input.size();
-		outputSize = temp.output.size();
-		input = new WriteData[inputSize]();
-		output = new WriteData[outputSize]();
 		templs.push_back(temp);
+		if ((int64_t)blockCount >= 0)
+		{
+			input.resize(temp.input.size());
+			output.resize(temp.output.size());
+			//inputSize = temp.input.size();
+			//outputSize = temp.output.size();
+			//input = new WriteData[inputSize]();
+			//output = new WriteData[outputSize]();
+		templs.push_back(temp);
+		}
 	}
 	else
 	{
-		inputSize = templs[this->label].input.size();
-		outputSize = templs[this->label].output.size();
-		input = new WriteData[inputSize]();
-		output = new WriteData[outputSize]();
+		input.resize(templs[this->label].input.size());
+		output.resize(templs[this->label].output.size());
+		//inputSize = templs[this->label].input.size();
+		//outputSize = templs[this->label].output.size();
+		//input = new WriteData[inputSize]();
+		//output = new WriteData[outputSize]();
 		++templs[this->label].count;
 	}
 
-	if (label == "on")
-		output[0].data = 1;
+	if ((int64_t)blockCount >= 0)
+	{
+		if (label == "on")
+			output[0].data = 1;
+	}
 
 	++blockCount;
 }
@@ -68,7 +79,9 @@ void LogicBlock::tick()
 
 	default:
 		for (auto& b : blocks)
+		{
 			b.tick();
+		}
 	}
 }
 
@@ -82,13 +95,14 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 	bool mouseOverBody = mouseOverWhole && (mousey >= by + fonth);
 	bool mouseOverTitle = mouseOverWhole && (mousey <= by + fonth);
 	bool mouseOverExpand = mouseOverTitle && (mousex >= bx + w - fontw);
+	bool mouseOverMove = mouseOverTitle && ((mousex <= bx + w - fontw) || !blocks.size());
 
 	bool clickOnce = click && !oldclick;
 	bool clickHold = click;
 
 	if (clickHold)
 	{
-		if ((!*held && !found && mouseOverTitle) || *held == this)
+		if ((!*held && !found && mouseOverMove) || *held == this)
 		{
 			x += (mousex - oldmousex) / posMul;
 			y += (mousey - oldmousey) / posMul;
@@ -140,7 +154,9 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		by = 0;
 		this->hidden = true;
 		for (auto& b : blocks)
+		{
 			b.recalc(bx, by, false);
+		}
 		return;
 	}
 
@@ -152,16 +168,19 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		b.recalc(bx, by, expand);
 
 	uint32_t maxLabel = 1;
-	for (int i = 0; i < inputSize || i < outputSize; ++i)
+	//for (int i = 0; i < inputSize || i < outputSize; ++i)
+	for (int i = 0; i < input.size() || i < output.size(); ++i)
 	{
 		uint32_t inLen = 0;
 		uint32_t outLen = 0;
 
-		if (i < inputSize)
+		//if (i < inputSize)
+		if (i < input.size())
 		{
 			getTextSize(templs[label].input[i].data(), fontsize, &inLen, NULL);
 		}
-		if (i < outputSize)
+		//if (i < outputSize)
+		if (i < output.size())
 		{
 			getTextSize(templs[label].output[i].data(), fontsize, &outLen, NULL);
 		}
@@ -180,7 +199,8 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 	w += 4 * fontw;
 
 	// fit max of input or output length or at least 1
-	h = (fonth - fontw) + fonth * std::max(1, std::max(inputSize, outputSize));
+	//h = (fonth - fontw) + fonth * std::max(1, std::max(inputSize, outputSize));
+	h = (fonth - fontw) + fonth * std::max(1ull, std::max(input.size(), output.size()));
 	if (expand)
 		for (auto& b : blocks)
 			if (b.h)
@@ -209,7 +229,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		drawRect(surface, bx, by, w, h, bgColorOn); // bg
 	else
 		drawRect(surface, bx, by, w, h, bgColorOff); // bg
-	drawRect(surface, bx, by, w, fonth, titlebarColor); // titlebar
+	drawRect(surface, bx, by, w - fontw, fonth, titlebarColor); // titlebar
 	drawRect(surface, bx, by + fonth, fontw, h - fonth, inputsColor); // inputs
 	drawRect(surface, bx + w - fontw, by + fonth, fontw, h - fonth, outputsColor); // outputs
 	if (blocks.size())
@@ -218,14 +238,15 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		drawRect(surface, bx + w - fontw, by, fontw, fonth, expandButtonColor);
 		drawRect(surface, bx + w - fontw, 
 			by + fonth / 2 - ceilf(fontw / 6.f), fontw, fontw / 3, textColor);
-		if (expand)
+		if (!expand)
 			drawRect(surface, bx + w - fontw + fontw / 2 - floor(fontw / 6.f), 
 				by + fonth / 2 - ceil(fontw / 2.f), fontw / 3, fontw, textColor);
 	}
 	drawText(surface, bx + fontw, by, fontsize, textColor, templs[label].name.data()); // title
 
 	int index = 0;
-	for (int i = 0; i < inputSize; ++i)
+	//for (int i = 0; i < inputSize; ++i)
+	for (int i = 0; i < input.size(); ++i)
 	{
 		XYCoord xy = getConnectionPos(index, true);
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
@@ -235,7 +256,8 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		++index;
 	}
 	index = 0;
-	for (int i = 0; i < outputSize; ++i)
+	//for (int i = 0; i < outputSize; ++i)
+	for (int i = 0; i < output.size(); ++i)
 	{
 		XYCoord xy = getConnectionPos(index, false);
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
@@ -272,7 +294,8 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	int index = 0;
 	if (isInput)
 	{
-		for (int i = 0; i < inputSize; ++i)
+		//for (int i = 0; i < inputSize; ++i)
+		for (int i = 0; i < input.size(); ++i)
 		{
 			if (templs[label].input[i] == name)
 				return index;
@@ -281,7 +304,8 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	}
 	else
 	{
-		for (int i = 0; i < outputSize; ++i)
+		//for (int i = 0; i < outputSize; ++i)
+		for (int i = 0; i < output.size(); ++i)
 		{
 			if (templs[label].output[i] == name)
 				return index;
@@ -296,10 +320,12 @@ void LogicBlock::resetWrittenTo()
 	for (auto& b : blocks)
 		b.resetWrittenTo();
 
-	for (int i = 0; i < inputSize; ++i)
+	//for (int i = 0; i < inputSize; ++i)
+	for (int i = 0; i < input.size(); ++i)
 		input[i].written = false;
 
-	for (int i = 0; i < outputSize; ++i)
+	//for (int i = 0; i < outputSize; ++i)
+	for (int i = 0; i < output.size(); ++i)
 		output[i].written = false;
 }
 

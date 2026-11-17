@@ -3,19 +3,20 @@
 
 LogicSim::LogicSim()
 { 
-	LogicBlock temp;
-	temp = LogicBlockAnd;
-	temp = LogicBlockOr;
-	temp = LogicBlockNor;
-	temp = LogicBlockNand;
-	temp = LogicBlockXnor;
-	temp = LogicBlockXor;
-	temp = LogicBlockNot;
-	temp = LogicBlockDelay;
-	temp = LogicBlockOn;
-	temp = LogicBlockOff;
-	temp = LogicBlockToggle;
-	temp = LogicBlockButton;
+	std::vector<LogicBlock> temp;
+	temp.reserve(12);
+	temp.push_back(LogicBlockAnd);
+	temp.push_back(LogicBlockOr);
+	temp.push_back(LogicBlockNor);
+	temp.push_back(LogicBlockNand);
+	temp.push_back(LogicBlockXnor);
+	temp.push_back(LogicBlockXor);
+	temp.push_back(LogicBlockNot);
+	temp.push_back(LogicBlockDelay);
+	temp.push_back(LogicBlockOn);
+	temp.push_back(LogicBlockOff);
+	temp.push_back(LogicBlockToggle);
+	temp.push_back(LogicBlockButton);
 
 	board = LogicBlock("", "", "Board");
 	board.setExpand(true);

@@ -28,7 +28,7 @@ LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std:
 			//outputSize = temp.output.size();
 			//input = new WriteData[inputSize]();
 			//output = new WriteData[outputSize]();
-		templs.push_back(temp);
+			templs.push_back(temp);
 		}
 	}
 	else
@@ -79,9 +79,7 @@ void LogicBlock::tick()
 
 	default:
 		for (auto& b : blocks)
-		{
 			b.tick();
-		}
 	}
 }
 
@@ -154,9 +152,7 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		by = 0;
 		this->hidden = true;
 		for (auto& b : blocks)
-		{
 			b.recalc(bx, by, false);
-		}
 		return;
 	}
 

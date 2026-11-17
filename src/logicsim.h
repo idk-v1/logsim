@@ -35,6 +35,8 @@ struct LogicSim
 
 	LogicBlock* getHeld();
 
+	size_t wireCount = 0;
+
 private:
 	bool needsRecalc = true;
 	int scale = 0;

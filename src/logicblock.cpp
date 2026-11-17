@@ -8,151 +8,64 @@ int LogicBlock::fonth = 0;
 int LogicBlock::fontsize = 0;
 int LogicBlock::posMul = 1;
 
-LogicBlock::LogicBlock(const std::string& label)
-{
-	if (label == "and" || label == "or" || label == "xor" || label == "nor" || 
-		label == "nand" || label == "xnor")
-	{
-		input = { {0}, {0} };
-		inputLabels = {"a", "b"};
-		output = { {0} };
-		outputLabels = {"out"};
-	}
-	else if (label == "not" || label == "delay")
-	{
-		input = { {0} };
-		inputLabels = { "in" };
-		output = { {0} };
-		outputLabels = { "out" };
-	}
-	else if (label == "on")
-	{
-		output = { {1, 0} };
-		outputLabels = { "out" };
-	}
-	else if (label == "off" || label == "toggle" || label == "button")
-	{
-		output = { {0} };
-		outputLabels = { "out" };
-	}
+size_t LogicBlock::blockCount = -12;
 
-	this->label = label;
-}
+std::vector<LogicTemplate> LogicBlock::templs;
 
 LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std::string& label)
 {
-	const char* start = in.data();
-	for (const char* c = start;; ++c)
+	this->label = findTempl(label);
+	if (this->label == -1)
 	{
-		if (*c == '|' || *c == 0)
-		{
-			if (c - start > 0)
-			{
-				bool inArray = false;
-				int arraySize = 0;
-				const char* nameEnd = c;
-				for (const char* ch = start; ch != c; ++ch)
-				{
-					if (*ch == '[')
-					{
-						inArray = true;
-						nameEnd = ch;
-					}
-					else if (*ch == ']')
-						inArray = false;
-					else if (inArray)
-						arraySize = arraySize * 10 + (*ch - '0');
-				}
-				if (arraySize)
-				{
-					for (int i = 0; i < arraySize; ++i)
-					{
-						input.push_back({ 0 });
-						inputLabels.push_back(arrayToStr(std::string(start, nameEnd - start), i));
-					}
-				}
-				else
-				{
-					input.push_back({ 0 });
-					inputLabels.push_back(std::string(start, nameEnd - start));
-				}
-			}
-			start = c + 1;
-
-			if (*c == 0)
-				break;
-		}
+		this->label = templs.size();
+		LogicTemplate temp(in, out, label);
+		input.resize(temp.input.size());
+		output.resize(temp.output.size());
+		templs.push_back(temp);
+	}
+	else
+	{
+		input.resize(templs[this->label].input.size());
+		output.resize(templs[this->label].output.size());
+		++templs[this->label].count;
 	}
 
-	start = out.data();
-	for (const char* c = start;; ++c)
-	{
-		if (*c == '|' || *c == 0)
-		{
-			if (c - start > 0)
-			{
-				bool inArray = false;
-				int arraySize = 0;
-				const char* nameEnd = c;
-				for (const char* ch = start; ch != c; ++ch)
-				{
-					if (*ch == '[')
-					{
-						inArray = true;
-						nameEnd = ch;
-					}
-					else if (*ch == ']')
-						inArray = false;
-					else if (inArray)
-						arraySize = arraySize * 10 + (*ch - '0');
-				}
-				if (arraySize)
-				{
-					for (int i = 0; i < arraySize; ++i)
-					{
-						output.push_back({0});
-						outputLabels.push_back(arrayToStr(std::string(start, nameEnd - start), i));
-					}
-				}
-				else
-				{
-					output.push_back({0});
-					outputLabels.push_back(std::string(start, nameEnd - start));
-				}
-			}
-			start = c + 1;
+	if (label == "on")
+		output[0].data = 1;
 
-			if (*c == 0)
-				break;
-		}
-	}
-
-	this->label = label;
+	++blockCount;
 }
 
 void LogicBlock::tick()
 {
-	if (label == "and")
-		output[0].data = input[0].data && input[1].data;
-	else if (label == "or")
-		output[0].data = input[0].data || input[1].data;
-	else if (label == "xor")
-		output[0].data = input[0].data != input[1].data;
-	else if (label == "nor")
-		output[0].data = !(input[0].data || input[1].data);
-	else if (label == "nand")
-		output[0].data = !(input[0].data && input[1].data);
-	else if (label == "xnor")
-		output[0].data = !(input[0].data != input[1].data);
-	else if (label == "not")
-		output[0].data = !input[0].data;
-	else if (label == "delay")
-		output[0].data = input[0].data;
-	else if (label == "button")
-		output[0].data = 0;
-	else
+	switch (label)
+	{
+	case 0: // and
+		output[0].data = input[0].data && input[1].data; break;
+	case 1: // or
+		output[0].data = input[0].data || input[1].data; break;
+	case 2: // nor
+		output[0].data = !(input[0].data || input[1].data); break;
+	case 3: // nand
+		output[0].data = !(input[0].data && input[1].data); break;
+	case 4: // xnor
+		output[0].data = !(input[0].data != input[1].data); break;
+	case 5: // xor
+		output[0].data = input[0].data != input[1].data; break;
+	case 6: // not
+		output[0].data = !input[0].data; break;
+	case 7: // delay
+		output[0].data = input[0].data; break;
+	//case 8: // on
+	//case 9: // off
+	//case 10: // toggle
+	case 11: // button
+		output[0].data = 0; break;
+
+	default:
 		for (auto& b : blocks)
 			b.tick();
+	}
 }
 
 void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, bool click, bool oldclick, bool& found, LogicBlock** held)
@@ -187,12 +100,12 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 		setExpand(!expand);
 	}
 
-	if (label == "toggle")
+	if (label == 10) // toggle
 	{
 		if (mouseOverBody && clickOnce)
 			output[0].data = !output[0].data;
 	}
-	else if (label == "button")
+	else if (label == 11) // button
 		output[0].data |= (mouseOverBody && clickOnce);
 }
 
@@ -242,17 +155,17 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 
 		if (i < input.size())
 		{
-			getTextSize(inputLabels[i].data(), fontsize, &inLen, NULL);
+			getTextSize(templs[label].input[i].data(), fontsize, &inLen, NULL);
 		}
 		if (i < output.size())
 		{
-			getTextSize(outputLabels[i].data(), fontsize, &outLen, NULL);
+			getTextSize(templs[label].output[i].data(), fontsize, &outLen, NULL);
 		}
 		maxLabel = std::max(maxLabel, 2 * fontw + inLen + outLen);
 	}
 	// fit name or at least 1 if blank
 	uint32_t labelw = 0;
-	getTextSize(label.data(), fontsize, &labelw, NULL);
+	getTextSize(templs[label].name.data(), fontsize, &labelw, NULL);
 	w = (int)std::max(maxLabel, labelw);
 	if (expand)
 		for (auto& b : blocks)
@@ -278,7 +191,8 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
 
-	if (label == "on" || (label == "toggle" && output[0].data))
+	// label == on, label == toggle
+	if (label == 8 || (label == 10 && output[0].data))
 		drawRect(surface, bx, by, w, h, rgb(63, 63, 63)); // bg
 	else
 		drawRect(surface, bx, by, w, h, rgb(31, 31, 31)); // bg
@@ -290,7 +204,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		drawRect(surface, bx + w - fontw, by, fontw, fonth, rgb(95, 95, 95));
 		drawText(surface, bx + w - fontw, by, fontsize, rgb(255, 255, 255), expand ? "-" : "+");
 	}
-	drawText(surface, bx + fontw, by, fontsize, rgb(255, 255, 255), label.data()); // title
+	drawText(surface, bx + fontw, by, fontsize, rgb(255, 255, 255), templs[label].name.data()); // title
 
 	int index = 0;
 	for (int i = 0; i < input.size(); ++i)
@@ -299,7 +213,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
 			input[i].data ? on : off);
 		drawTextA(surface, xy.x + fontw, xy.y, -1, 0, fontsize,
-			rgb(255, 255, 255), inputLabels[i].data());
+			rgb(255, 255, 255), templs[label].input[i].data());
 		++index;
 	}
 	index = 0;
@@ -309,7 +223,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 		drawCircle(surface, xy.x, xy.y, fontw / 2,
 			output[i].data ? on : off);
 		drawTextA(surface, xy.x - fontw, xy.y, 1, 0, fontsize,
-			rgb(255, 255, 255), outputLabels[i].data());
+			rgb(255, 255, 255), templs[label].output[i].data());
 
 		++index;
 	}
@@ -342,7 +256,7 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	{
 		for (int i = 0; i < input.size(); ++i)
 		{
-			if (inputLabels[i] == name)
+			if (templs[label].input[i] == name)
 				return index;
 			++index;
 		}
@@ -351,7 +265,7 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	{
 		for (int i = 0; i < output.size(); ++i)
 		{
-			if (outputLabels[i] == name)
+			if (templs[label].output[i] == name)
 				return index;
 			++index;
 		}
@@ -402,4 +316,111 @@ void LogicBlock::setFontSize(int w, int h, int fontsize, int posMul)
 	fonth = h;
 	LogicBlock::fontsize = fontsize;
 	LogicBlock::posMul = posMul;
+}
+
+std::string LogicBlock::getLabel()
+{
+	return templs[label].name;
+}
+
+int LogicBlock::findTempl(const std::string& name)
+{
+	for (size_t i = 0; i < templs.size(); ++i)
+		if (name == templs[i].name)
+			return i;
+	return -1;
+}
+
+LogicTemplate::LogicTemplate(const std::string& in, const std::string& out, const std::string& label)
+{
+	const char* start = in.data();
+	for (const char* c = start;; ++c)
+	{
+		if (*c == '|' || *c == 0)
+		{
+			if (c - start > 0)
+			{
+				bool inArray = false;
+				int arraySize = 0;
+				const char* nameEnd = c;
+				for (const char* ch = start; ch != c; ++ch)
+				{
+					if (*ch == '[')
+					{
+						inArray = true;
+						nameEnd = ch;
+					}
+					else if (*ch == ']')
+						inArray = false;
+					else if (inArray)
+						arraySize = arraySize * 10 + (*ch - '0');
+				}
+				if (arraySize)
+				{
+					for (int i = 0; i < arraySize; ++i)
+					{
+						input.push_back(arrayToStr(std::string(start, nameEnd - start), i));
+					}
+				}
+				else
+				{
+					input.push_back(std::string(start, nameEnd - start));
+				}
+			}
+			start = c + 1;
+
+			if (*c == 0)
+				break;
+		}
+	}
+
+	start = out.data();
+	for (const char* c = start;; ++c)
+	{
+		if (*c == '|' || *c == 0)
+		{
+			if (c - start > 0)
+			{
+				bool inArray = false;
+				int arraySize = 0;
+				const char* nameEnd = c;
+				for (const char* ch = start; ch != c; ++ch)
+				{
+					if (*ch == '[')
+					{
+						inArray = true;
+						nameEnd = ch;
+					}
+					else if (*ch == ']')
+						inArray = false;
+					else if (inArray)
+						arraySize = arraySize * 10 + (*ch - '0');
+				}
+				if (arraySize)
+				{
+					for (int i = 0; i < arraySize; ++i)
+					{
+						output.push_back(arrayToStr(std::string(start, nameEnd - start), i));
+					}
+				}
+				else
+				{
+					output.push_back(std::string(start, nameEnd - start));
+				}
+			}
+			start = c + 1;
+
+			if (*c == 0)
+				break;
+		}
+	}
+
+	name = label;
+
+	if (name == "and" || name == "or" || name == "nor" || name == "nand" ||
+		name == "xnor" || name == "xor" || name == "not" || name == "delay" ||
+		name == "on" || name == "off" || name == "toggle" || name == "button")
+		count = 0; // logicsim defines these first so tick can work correctly with indexes
+	else
+		count = 1;
 }

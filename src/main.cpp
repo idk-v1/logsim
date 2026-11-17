@@ -182,6 +182,7 @@ int main()
 	
 	size_t ticks = 0;
 	size_t tps = 30;
+	int cappedticks = 1;
 	size_t lastTime = SDL_GetTicks();
 	size_t deltaTime = 0, scrollDT = 0;
 	bool pause = true;
@@ -223,6 +224,12 @@ int main()
 				case SDL_SCANCODE_RIGHTBRACKET: sim.zoom(1, surface->w, surface->h); break;
 				case SDL_SCANCODE_P: pause = !pause; break;
 				case SDL_SCANCODE_RETURN: if (pause) { sim.tick(); ++ticks; } break;
+				case SDL_SCANCODE_0: cappedticks = 0; break;
+				case SDL_SCANCODE_1: cappedticks = 1; break;
+				case SDL_SCANCODE_2: cappedticks = 5; break;
+				case SDL_SCANCODE_3: cappedticks = 10; break;
+				case SDL_SCANCODE_4: cappedticks = 30; break;
+				case SDL_SCANCODE_5: cappedticks = 100; break;
 				}
 				break;
 
@@ -265,10 +272,15 @@ int main()
 		if (deltaTime >= 1000 / tps)
 		{
 			deltaTime -= 1000 / tps;
-			if (deltaTime >= 1000 / tps)
-				tps = std::max(tps - 1, 1ull);
+			if (cappedticks == 0)
+			{
+				if (deltaTime >= 1000 / tps)
+					tps = std::max(tps - 1, 1ull);
+				else
+					++tps;
+			}
 			else
-				++tps;
+				tps = cappedticks;
 
 			if (!pause)
 			{
@@ -294,15 +306,18 @@ int main()
 		LogicBlock* held = sim.getHeld();
 		if (held)
 		{
-			drawTextFA(surface, 0, surface->h - 1, -1, 3, 1, rgb(255, 255, 255), "Held: %s", held->label.data());
-			drawTextFA(surface, 0, surface->h - 1, -1, 1, 1, rgb(255, 255, 255), "Pos: %d, %d", held->getRelPos().x, held->getRelPos().y);
+			drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 3, 1, rgb(255, 255, 255), "Held: %s", held->getLabel().data());
+			drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 1, 1, rgb(255, 255, 255), "Pos: %d, %d", held->getRelPos().x, held->getRelPos().y);
 		}
 
-		drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 3, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
+		drawTextFA(surface, 0, surface->h - 1, -1, 5, 1, rgb(255, 255, 255), "Blocks: %llu", LogicBlock::blockCount);
+		drawTextFA(surface, 0, surface->h - 1, -1, 7, 1, rgb(255, 255, 255), "Wires: %llu", sim.wireCount);
+
+		drawTextFA(surface, 0, surface->h - 1, -1, 3, 1, rgb(255, 255, 255), "Ticks: %llu", ticks);
 		if (pause)
-			drawTextA(surface, surface->w - 1, surface->h - 1, 1, 1, 1, rgb(255, 255, 255), "Paused");
+			drawTextA(surface, 0, surface->h - 1, -1, 1, 1, rgb(255, 255, 255), "Paused");
 		else
-			drawTextFA(surface, surface->w - 1, surface->h - 1, 1, 1, 1, rgb(255, 255, 255), "TPS: %llu", tps);
+			drawTextFA(surface, 0, surface->h - 1, -1, 1, 1, rgb(255, 255, 255), "TPS: %llu", tps);
 
 		SDL_UpdateWindowSurface(window);
 	}

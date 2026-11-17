@@ -1,8 +1,23 @@
 #include "logicsim.h"
 #include "../graphics/bulletinV1_font.h"
 
-LogicSim::LogicSim() : board("Board")
+LogicSim::LogicSim()
 { 
+	LogicBlock temp;
+	temp = LogicBlockAnd;
+	temp = LogicBlockOr;
+	temp = LogicBlockNor;
+	temp = LogicBlockNand;
+	temp = LogicBlockXnor;
+	temp = LogicBlockXor;
+	temp = LogicBlockNot;
+	temp = LogicBlockDelay;
+	temp = LogicBlockOn;
+	temp = LogicBlockOff;
+	temp = LogicBlockToggle;
+	temp = LogicBlockButton;
+
+	board = LogicBlock("", "", "Board");
 	board.setExpand(true);
 
 	if (scale)
@@ -51,6 +66,7 @@ void LogicSim::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b,
 				connectionsOut.push_back(Connector(&a, newAIndex, &b, newBIndex, outout));
 			else
 				connectionsInOut.push_back(Connector(&a, newAIndex, &b, newBIndex, inout));
+			++wireCount;
 		}
 	}
 	else
@@ -63,6 +79,8 @@ void LogicSim::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b,
 			connectionsOut.push_back(Connector(&a, aIndex, &b, bIndex, outout));
 		else
 			connectionsInOut.push_back(Connector(&a, aIndex, &b, bIndex, inout));
+
+		++wireCount;
 	}
 }
 

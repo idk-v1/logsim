@@ -6,6 +6,15 @@
 #include <list>
 #include <vector>
 
+struct LogicTemplate
+{
+	LogicTemplate(const std::string& in, const std::string& out, const std::string& label);
+
+	std::vector<std::string> input, output;
+	std::string name;
+	int count;
+};
+
 static std::string arrayToStr(const std::string& str, size_t i)
 {
 	return str + "[" + std::to_string(i) + "]";
@@ -54,7 +63,6 @@ struct WriteData
 struct LogicBlock
 {
 	LogicBlock() = default;
-	LogicBlock(const std::string& label);
 	LogicBlock(const std::string& in, const std::string& out, const std::string& label);
 
 	void tick();
@@ -86,14 +94,19 @@ struct LogicBlock
 
 	std::vector<WriteData> input;
 	std::vector<WriteData> output;
-	std::vector<std::string> inputLabels;
-	std::vector<std::string> outputLabels;
-	std::string label;
+	int label;
 
 	static void setFontSize(int w, int h, int fontsize, int posMul);
 
+	std::string getLabel();
+
+	static size_t blockCount;
+
 private:
 	std::list<LogicBlock> blocks;
+
+	static std::vector<LogicTemplate> templs;
+	int findTempl(const std::string& name);
 
 	static int fontw, fonth, fontsize, posMul;
 
@@ -103,33 +116,45 @@ private:
 
 // in: a, b
 // out: out
-#define LogicBlockAnd    LogicBlock("and")
+// index 0
+#define LogicBlockAnd    LogicBlock("a|b", "out", "and")
 // in: a, b
 // out: out
-#define LogicBlockOr     LogicBlock("or")
+// index 1
+#define LogicBlockOr     LogicBlock("a|b", "out", "or")
 // in: a, b
 // out: out
-#define LogicBlockNor    LogicBlock("nor")
+// index 2
+#define LogicBlockNor    LogicBlock("a|b", "out", "nor")
 // in: a, b
 // out: out
-#define LogicBlockNand   LogicBlock("nand")
+// index 3
+#define LogicBlockNand   LogicBlock("a|b", "out", "nand")
 // in: a, b
 // out: out
-#define LogicBlockXnor   LogicBlock("xnor")
+// index 4
+#define LogicBlockXnor   LogicBlock("a|b", "out", "xnor")
 // in: a, b
 // out: out
-#define LogicBlockXor    LogicBlock("xor")
+// index 5
+#define LogicBlockXor    LogicBlock("a|b", "out", "xor")
 // in: in
 // out: out
-#define LogicBlockNot    LogicBlock("not")
+// index 6
+#define LogicBlockNot    LogicBlock("in", "out", "not")
 // in: in
 // out: out
-#define LogicBlockDelay  LogicBlock("delay")
+// index 7
+#define LogicBlockDelay  LogicBlock("in", "out", "delay")
 // out: out
-#define LogicBlockOn     LogicBlock("on")
+// index 8
+#define LogicBlockOn     LogicBlock("", "out", "on")
 // out: out
-#define LogicBlockOff    LogicBlock("off")
+// index 9
+#define LogicBlockOff    LogicBlock("", "out", "off")
 // out: out
-#define LogicBlockToggle LogicBlock("toggle")
+// index 10
+#define LogicBlockToggle LogicBlock("", "out", "toggle")
 // out: out
-#define LogicBlockButton LogicBlock("button")
+// index 11
+#define LogicBlockButton LogicBlock("", "out", "button")

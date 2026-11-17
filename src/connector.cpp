@@ -12,9 +12,9 @@ Connector::Connector(LogicBlock* a, const std::string& aIndex,
 	this->bIndex = b->getConnectionIndex(bIndex, bIn);
 
 	if (a->getConnectionIndex(aIndex, aIn) == -1)
-		printf("%s.%c[%s] doesn't exist\n", a->label.data(), aIn ? 'i' : 'o', aIndex.data());
+		printf("%s.%c[%s] doesn't exist\n", a->getLabel().data(), aIn ? 'i' : 'o', aIndex.data());
 	if (b->getConnectionIndex(bIndex, bIn) == -1)
-		printf("%s.%c[%s] doesn't exist\n", b->label.data(), bIn ? 'i' : 'o', bIndex.data());
+		printf("%s.%c[%s] doesn't exist\n", b->getLabel().data(), bIn ? 'i' : 'o', bIndex.data());
 }
 
 void Connector::tick()

@@ -212,16 +212,23 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 			Sint32 oldx0 = x0;
 			x0 = max(x0, 0);
 			x1 = min(x1, surface->w - 1);
-			Sint32 badx0 = (-y0) / slope + oldx0;
-			Sint32 badx1 = (surface->h - y0) / slope + oldx0;
+			Sint32 oobx0, oobx1;
+			if (slope > 0)
+			{
+				oobx0 = (1 - y0) / slope + oldx0;
+				oobx1 = (surface->h - 1 - y0) / slope + oldx0;
+			}
+			else
+			{
+				oobx1 = (1 - y0) / slope + oldx0;
+				oobx0 = (surface->h - 1 - y0) / slope + oldx0;
+			}
+			x0 = max(x0, oobx0);
+			x1 = min(x1, oobx1);
 			for (Sint32 x = x0; x <= x1; ++x)
 			{
 				float y = (slope * (x - oldx0) + y0);
-				setPixel(surface, x, y, color);
-				if (x == badx0 || x == badx1 || x == 0 || x == surface->w - 1)
-				{
-					//drawRectA(surface, x, y, 0, 0, 5, 5, rgb(255, 0, 0));
-				}
+				setPixelUC(surface, x, y, color);
 			}
 		}
 		else // use y as loop var
@@ -241,32 +248,23 @@ PIXEL_FN void drawLineFromPoints(SDL_Surface* surface, Sint32 x0, Sint32 y0, Sin
 			Sint32 oldy0 = y0;
 			y0 = max(y0, 0);
 			y1 = min(y1, surface->h - 1);
-			Sint32 bady0 = (-x0) / slope + oldy0;
-			Sint32 bady1 = (surface->w - x0) / slope + oldy0;
+			Sint32 ooby0, ooby1;
 			if (slope > 0)
 			{
-				// wip
-				if (bady0 >= 0)
-				{
-					y0 = max(y0, bady0);
-					float x = (slope * (y0 - oldy0) + x0);
-					//drawRectA(surface, x, y0, 0, 0, 5, 5, rgb(0, 255, 255));
-				}
-				if (bady1 < surface->h)
-				{
-					y1 = min(y1, bady1);
-					float x = (slope * (y1 - oldy0) + x0);
-					//drawRectA(surface, x, y1, 0, 0, 5, 5, rgb(0, 255, 255));
-				}
+				ooby0 = (1 - x0) / slope + oldy0;
+				ooby1 = (surface->w - 1 - x0) / slope + oldy0;
 			}
+			else
+			{
+				ooby1 = (1 - x0) / slope + oldy0;
+				ooby0 = (surface->w - 1 - x0) / slope + oldy0;
+			}
+			y0 = max(y0, ooby0);
+			y1 = min(y1, ooby1);
 			for (Sint32 y = y0; y <= y1; ++y)
 			{
 				float x = (slope * (y - oldy0) + x0);
-				setPixel(surface, x, y, color);
-				if (y == bady0 || y == bady1 || y == 0 || y == surface->h - 1)
-				{
-					//drawRectA(surface, x, y, 0, 0, 5, 5, rgb(255, 0, 0));
-				}
+				setPixelUC(surface, x, y, color);
 			}
 		}
 	}

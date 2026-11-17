@@ -34,9 +34,9 @@ B 06 // out
 C 05 // end
 
    // i = 1
-00 22 loadimm 1, regA
+00 23 loadimm 1, regA
    // end = 10
-01 22 loadimm 10, regC
+01 23 loadimm 10, regC
 loop: 02
    // if (i <= end)
 02 17 compare regA, regC
@@ -52,8 +52,8 @@ after: 07
    // exit()
 07 01 halt
 
-00 22 00 01 XX | ldi
-01 22 02 0A XX | ldi
+00 23 00 01 XX | ldi
+01 23 02 0A XX | ldi
 02 17 00 02 XX | cmp
 03 05 07 XX XX | jgr
 04 08 00 01 01 | add
@@ -68,3 +68,80 @@ add: addra, addrb, addro
 increment: addr
 jump: addr
 halt:
+
+
+
+// 8 bit division
+int res = 0;
+int rem = 0;
+int num = 45;
+int denom = 7;
+int i = 0;
+
+if (denom == 0)
+    exit();
+while (denom > 0) // high bit means stop
+{
+    denom <<= 1;
+    i++;
+}
+while (denom & 1 == 0) // low bit means stop
+{
+    if (num >=(uns) denom)
+    {
+        num -= denom;
+        res += 1 << i;
+    }
+    denom >>= 1;
+    --i;
+}
+rem = num;
+
+
+
+int res = 0;
+int rem = 0;
+int num = 45;
+int denom = 7;
+int i = 0;
+int shi = 0;
+int shr = 0;
+
+if (denom == 0)
+    goto exit;
+
+startloop:
+if (denom < 0) // high bit means stop
+    goto divloop;
+denom = denom << 1;
+i++;
+goto startloop;
+
+divloop:
+if (denom & 1 == 1) // low bit means stop
+    goto end;
+if (num == 0)
+    goto end;
+
+if (num <(uns) denom)
+    goto aftersub;
+num = num - denom;
+
+shr = 1;
+shi = 0;
+shiftloop:
+if (shi == i)
+    goto shiftloopend;
+shr = shr << 1;
+shi++;
+shiftloopend:
+res = res + shr;
+
+aftersub:
+denom = denom >> 1;
+--i;
+goto divloop;
+end:
+rem = num;
+exit:
+exit();

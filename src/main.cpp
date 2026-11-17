@@ -17,7 +17,7 @@ int main()
 	LogicBlock& startbtn = sim.add(LogicBlockButton);
 	startbtn.setPos(250, 200);
 
-	int64_t instr_data[]  = { 0x22, 0x22, 0x17, 0x05, 0x08, 0x0A, 0x02, 0x01 };
+	int64_t instr_data[]  = { 0x23, 0x23, 0x17, 0x05, 0x08, 0x0A, 0x02, 0x01 };
 	int64_t param1_data[] = { 0x00, 0x02, 0x00, 0x07, 0x00, 0x00, 0x02, 0x00 };
 	int64_t param2_data[] = { 0x01, 0x0A, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00 };
 	int64_t param3_data[] = { 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
@@ -26,9 +26,9 @@ int main()
 	LogicBlock& param2_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param2_data);
 	LogicBlock& param3_rom = createAddrROM(sim, sim.getBoard(), n, n, sizeof(instr_data) / sizeof(*instr_data), param3_data);
 
-	LogicBlock& registers = createAddrMemory(sim, sim.getBoard(), n, n, 8);
+	LogicBlock& registers = createAddrMemory(sim, sim.getBoard(), n, n, 3);
 	LogicBlock& flags = createFlagRegister(sim, sim.getBoard());
-	registers.setPos(600, 15);
+	registers.setPos(700, 15);
 	flags.setPos(550, 15);
 
 	LogicBlock& pc = createProgramCounter(sim, sim.getBoard(), n);
@@ -58,8 +58,8 @@ int main()
 	pc.setPos(250, 15);
 	instr_rom.setPos(400, 15);
 	param1_rom.setPos(400, 150);
-	param2_rom.setPos(400, 300);
-	param3_rom.setPos(400, 450);
+	param2_rom.setPos(400, 275);
+	param3_rom.setPos(400, 400);
 
 	sim.connect(pc, "data[]", instr_rom, "addr[]");
 	sim.connect(pc, "data[]", param1_rom, "addr[]");
@@ -69,7 +69,7 @@ int main()
 	
 
 	LogicBlock& loadimm = createInstrLoadImm(sim, sim.getBoard(), n);
-	loadimm.setPos(500, 1000);
+	loadimm.setPos(500, 500);
 	sim.connect(instr_rom, "out[]", loadimm, "num[]");
 	sim.connect(param1_rom, "out[]", loadimm, "addr[]");
 	sim.connect(param2_rom, "out[]", loadimm, "data[]");
@@ -81,7 +81,7 @@ int main()
 	sim.connect(loadimm, "sigout", pc, "inc");
 
 	LogicBlock& move = createInstrMove(sim, sim.getBoard(), n);
-	move.setPos(750, 1000);
+	move.setPos(750, 500);
 	sim.connect(instr_rom, "out[]", move, "num[]");
 	sim.connect(param1_rom, "out[]", move, "addrsrc[]");
 	sim.connect(param2_rom, "out[]", move, "addrdst[]");
@@ -96,7 +96,7 @@ int main()
 	sim.connect(move, "sigout", pc, "inc");
 
 	LogicBlock& compare = createInstrCompare(sim, sim.getBoard(), n);
-	compare.setPos(1000, 1000);
+	compare.setPos(1000, 500);
 	sim.connect(instr_rom, "out[]", compare, "num[]");
 	sim.connect(param1_rom, "out[]", compare, "addra[]");
 	sim.connect(param2_rom, "out[]", compare, "addrb[]");
@@ -115,7 +115,7 @@ int main()
 
 
 	LogicBlock& jumpifgr = createInstrJumpGr(sim, sim.getBoard(), n);
-	jumpifgr.setPos(1250, 1000);
+	jumpifgr.setPos(1250, 500);
 	sim.connect(instr_rom, "out[]", jumpifgr, "num[]");
 	sim.connect(param1_rom, "out[]", jumpifgr, "addr[]");
 	sim.connect(romdelay, "out", jumpifgr, "sigin");
@@ -125,7 +125,7 @@ int main()
 	sim.connect(jumpifgr, "incout", pc, "inc");
 
 	LogicBlock& jump = createInstrJump(sim, sim.getBoard(), n);
-	jump.setPos(1500, 1000);
+	jump.setPos(1500, 500);
 	sim.connect(instr_rom, "out[]", jump, "num[]");
 	sim.connect(param1_rom, "out[]", jump, "addr[]");
 	sim.connect(romdelay, "out", jump, "sigin");
@@ -133,7 +133,7 @@ int main()
 	sim.connect(jump, "setout", pc, "set");
 
 	LogicBlock& adder = createInstrAdd(sim, sim.getBoard(), n);
-	adder.setPos(1750, 1000);
+	adder.setPos(1750, 500);
 	sim.connect(instr_rom, "out[]", adder, "num[]");
 	sim.connect(param1_rom, "out[]", adder, "addra[]");
 	sim.connect(param2_rom, "out[]", adder, "addrb[]");
@@ -153,7 +153,7 @@ int main()
 	sim.connect(adder, "sigout", flags, "owrite");
 
 	LogicBlock& inc = createInstrInc(sim, sim.getBoard(), n);
-	inc.setPos(2000, 1000);
+	inc.setPos(2000, 500);
 	sim.connect(instr_rom, "out[]", inc, "num[]");
 	sim.connect(param1_rom, "out[]", inc, "addr[]");
 	sim.connect(registers, "out[]", inc, "memin[]");

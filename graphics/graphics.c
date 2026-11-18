@@ -356,7 +356,7 @@ void drawChar(SDL_Surface* surface, Sint32 x, Sint32 y, Uint32 size, Uint32 colo
 {
 	const int border = 0;
 
-	if (size)
+	if (size > 1)
 	{
 		Sint32 index = (ch - ' ') * stride;
 
@@ -392,7 +392,31 @@ void drawChar(SDL_Surface* surface, Sint32 x, Sint32 y, Uint32 size, Uint32 colo
 						}
 		}
 	}
-	else // Hacky way of reducing text size, samples top left of 2x2 pixel section
+	else if (size == 1)
+	{
+		Sint32 index = (ch - ' ') * stride;
+
+		// completely inside surface
+		if (x >= border && y >= border &&
+			x + font_w < surface->w - border &&
+			y + font_h < surface->h - border)
+		{
+			for (Sint32 fy = 0; fy < font_h; fy++)
+				for (Sint32 fx = 0; fx < font_w; fx++)
+					if (getArrayBit(&font[index], fx + fy * font_w))
+						setPixelUC(surface, x + fx, y + fy, color);
+		}
+		// partially outside surface
+		else if (x + font_w >= border && y + font_h >= border &&
+			x < surface->w - border && y < surface->h - border)
+		{
+			for (Sint32 fy = 0; fy < font_h; fy++)
+				for (Sint32 fx = 0; fx < font_w; fx++)
+					if (getArrayBit(&font[index], fx + fy * font_w))
+						setPixel(surface, x + fx, y + fy, color);
+		}
+	}
+	else if (size == 0) // Hacky way of reducing text size, samples top left of 2x2 pixel section
 	{
 		Sint32 index = (ch - ' ') * stride;
 

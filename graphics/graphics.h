@@ -253,9 +253,11 @@ inline static void setLine(SDL_Surface* surface, Uint32 x, Uint32 y, Uint32 w, U
 	for (Sint32 i = 0; i < align && i < w; i++)
 		setPixelUC(surface, x + i, y, color);
 
-	for (Uint32 ix = align; ix < w;)
+	Uint32 ix;
+	Sint32 width;
+	for (ix = align; ix < w;)
 	{
-		Sint32 width = w - ix;
+		width = w - ix;
 		if (width >= 64)
 		{
 #ifdef USE_SSE
@@ -265,49 +267,57 @@ inline static void setLine(SDL_Surface* surface, Uint32 x, Uint32 y, Uint32 w, U
 #endif
 			ix += 64;
 		}
-		else if (width >= 32)
-		{
-#ifdef USE_SSE
-			setHLine32(surface, ix + x, y, c128);
-#else
-			setHLine32(surface, ix + x, y, color64);
-#endif
-			ix += 32;
-		}
-		else if (width >= 16)
-		{
-#ifdef USE_SSE
-			setHLine16(surface, ix + x, y, c128);
-#else
-			setHLine16(surface, ix + x, y, color64);
-#endif
-			ix += 16;
-		}
-		else if (width >= 8)
-		{
-#ifdef USE_SSE
-			setHLine8(surface, ix + x, y, c128);
-#else
-			setHLine8(surface, ix + x, y, color64);
-#endif
-			ix += 8;
-		}
-		else if (width >= 4)
-		{
-			setPixel2UC(surface, x + 0 + ix, y, color64);
-			setPixel2UC(surface, x + 2 + ix, y, color64);
-			ix += 4;
-		}
-		else if (width >= 2)
-		{
-			setPixel2UC(surface, x + ix, y, color64);
-			ix += 2;
-		}
 		else
-		{
-			setPixelUC(surface, x + ix, y, color);
-			ix++;
-		}
+			break;
+	}
+	width = w - ix;
+	if (width >= 32)
+	{
+#ifdef USE_SSE
+		setHLine32(surface, ix + x, y, c128);
+#else
+		setHLine32(surface, ix + x, y, color64);
+#endif
+		ix += 32;
+	}
+	width = w - ix;
+	if (width >= 16)
+	{
+#ifdef USE_SSE
+		setHLine16(surface, ix + x, y, c128);
+#else
+		setHLine16(surface, ix + x, y, color64);
+#endif
+		ix += 16;
+	}
+	width = w - ix;
+	if (width >= 8)
+	{
+#ifdef USE_SSE
+		setHLine8(surface, ix + x, y, c128);
+#else
+		setHLine8(surface, ix + x, y, color64);
+#endif
+		ix += 8;
+	}
+	width = w - ix;
+	if (width >= 4)
+	{
+		setPixel2UC(surface, x + 0 + ix, y, color64);
+		setPixel2UC(surface, x + 2 + ix, y, color64);
+		ix += 4;
+	}
+	width = w - ix;
+	if (width >= 2)
+	{
+		setPixel2UC(surface, x + ix, y, color64);
+		ix += 2;
+	}
+	width = w - ix;
+	if (width >= 1)
+	{
+		setPixelUC(surface, x + ix, y, color);
+		ix++;
 	}
 }
 

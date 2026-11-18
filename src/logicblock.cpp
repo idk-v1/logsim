@@ -309,9 +309,6 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 
 void LogicBlock::resetWrittenTo()
 {
-	for (auto& b : blocks)
-		b.resetWrittenTo();
-
 	//for (int i = 0; i < inputSize; ++i)
 	for (int i = 0; i < input.size(); ++i)
 		input[i].written = false;
@@ -319,6 +316,9 @@ void LogicBlock::resetWrittenTo()
 	//for (int i = 0; i < outputSize; ++i)
 	for (int i = 0; i < output.size(); ++i)
 		output[i].written = false;
+
+	for (auto& b : blocks)
+		b.resetWrittenTo();
 }
 
 bool LogicBlock::isHidden() const

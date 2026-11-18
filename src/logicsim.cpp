@@ -238,6 +238,11 @@ void LogicSim::setScroll(int x, int y)
 
 void LogicSim::scroll(int x, int y)
 {
+	if (scale > 0)
+	{
+		x = x / (scale + 1.f) * 3 / 2.f;
+		y = y / (scale + 1.f) * 3 / 2.f;
+	}
 	if (held)
 	{
 		int dx = -x;

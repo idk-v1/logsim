@@ -1,60 +1,43 @@
 instructions:
-00 nop              []                        []
-01 halt             []                        []   (sends signal into the void)
-02 jump             [rom addr]                [pc]
-03 jumpifzero       [rom addr, flag zero]     [pc]
-04 jumpifless       [rom addr, flag less]     [pc]
-05 jumpifgreater    [rom addr, flag greater]  [pc]
-06 jumpifequal      [rom addr, flag equal]    [pc]
-07 jumpifoverflow   [rom addr, flag overflow] [pc]
-08 add              [regA, regB]              [regA, flag overflow, flagzero]
-09 subtract         [regA, regB]              [regA, flag overflow, flagzero]
-0A increment        [regA]                    [regA, flag overflow, flagzero]
-0B decrement        [regA]                    [regA, flag overflow, flagzero]
-0C multiply         [regA, regB]              [regC (low), regC+1 (high), flagzero]
-0D negate           [regA]                    [regB, flagzero]
-0E lshift           [regA]                    [regB, flagzero]
-0F rshift           [regA]                    [regB, flagzero]
-10 rshift(signed)   [regA]                    [regB, flagzero]
-11 lcycle           [regA]                    [regB, flagzero]
-12 rcycle           [regA]                    [regB, flagzero]
-13 xor              [regA, regB]              [regC, flagzero]
-14 and              [regA, regB]              [regC, flagzero]
-15 or               [regA, regB]              [regC, flagzero]
-16 invert           [regA]                    [regB, flagzero]
-17 compare          [regA, regB]              [flags less, greater, equal]
-18 compare(uns)     [regA, regB]              [flags less, greater, equal]
-19 readflagzero     [flag zero]               [regA]
-1A readflagequal    [flag equal]              [regA]
-1B readflagless     [flag less]               [regA]
-1C readflaggreater  [flag greater]            [regA]
-1D readflagoverflow [flag overflow]           [regA]
-1E readpc           [pc]                      [regA]
-1F memmove          [mem addr src]            [mem addr dest]
-20 move             [regA]                    [regB]
-21 load             [mem addr src]            [regA]
-22 store            [regA]                    [mem addr dest]
-23 loadimm          [imm*]                    [regA]    (* converted to rom addr)
-24 clearflags       []                        [flags]
+00 nop no-op            []                        []
+01 hlt halt             []                        []   (sends signal into the void)
+02 jmp jump             [rom addr]                [pc]
+03 jzo jumpifzero       [rom addr, flag zero]     [pc]
+04 jls jumpifless       [rom addr, flag less]     [pc]
+05 jgr jumpifgreater    [rom addr, flag greater]  [pc]
+06 jeq jumpifequal      [rom addr, flag equal]    [pc]
+07 jov jumpifoverflow   [rom addr, flag overflow] [pc]
+08 add add              [regA, regB]              [regA, flag overflow, flagzero]
+09 sub subtract         [regA, regB]              [regA, flag overflow, flagzero]
+0A inc increment        [regA]                    [regB, flag overflow, flagzero]
+0B dec decrement        [regA]                    [regB, flag overflow, flagzero]
+0C mul multiply         [regA, regB]              [regC (low), regC+1 (high), flagzero]
+0D neg negate           [regA]                    [regB, flagzero]
+0E lsh lshift           [regA]                    [regB, flagzero]
+0F rsh rshift           [regA]                    [regB, flagzero]
+10 rss rshift(signed)   [regA]                    [regB, flagzero]
+11 lcl lcycle           [regA]                    [regB, flagzero]
+12 rcl rcycle           [regA]                    [regB, flagzero]
+13 xor xor              [regA, regB]              [regC, flagzero]
+14 and and              [regA, regB]              [regC, flagzero]
+15 or  or               [regA, regB]              [regC, flagzero]
+16 inv invert           [regA]                    [regB, flagzero]
+17 cmp compare          [regA, regB]              [flags less, greater, equal]
+18 cmu compare(uns)     [regA, regB]              [flags less, greater, equal]
+19 rfz readflagzero     [flag zero]               [regA]
+1A rfe readflagequal    [flag equal]              [regA]
+1B rfl readflagless     [flag less]               [regA]
+1C rfg readflaggreater  [flag greater]            [regA]
+1D rfo readflagoverflow [flag overflow]           [regA]
+1E rpc readpc           [pc]                      [regA]
+1F mmv memmove          [mem addr src]            [mem addr dest]
+20 mov move             [regA]                    [regB]
+21 lod load             [mem addr src]            [regA]
+22 sto store            [regA]                    [mem addr dest]
+23 ldi loadimm          [imm*]                    [regA]    (* converted to rom addr)
+24 cfl clearflags       []                        [flags]
+25 ghb gethighbit       [regA]                    [regB]
+26 glb getlowbit        [regA]                    [regB]
+27 isz iszero           [regA]                    [flagzero]
 
 flags: zero, equal, less, greater, overflow
-
-only 2 registers are needed for all math operations including both input and output
-1 is needed for program counter
-1 memory cell is for overflow
-more registers can be created for general purpose use
-
-- all memory cells are the same type, so you could technically use any memory cell as a register.
-- registers are supposed to be fast, so mine need to be fast.
-- addressing a memory cell adds 3 extra cycles to read and write, 
-   so special hardware for accessing specific registers cuts off those extra 3 cycles.
-- and some operations need to access 2 values at once, and the memory line doesn't support that,
-   so fixed inputs and outputs are needed
-- maybe 3 cycles isnt bad compared to the cost of most operations, 
-   so addressing could be better (fewer instructions, plus only 1 move instruction).
-   still would need a fixed input/output for operations (fake register bc they're all the same)
-
-division will be software only bc there is no parallel or efficient algorithm for it in hardware
-and it is just so fucking slow
-it is n(int size) (less-thans(subtraction) and subtraction and write to memory cell)
-maybe I should make hardware division just because it would be slightly faster, but still inefficient

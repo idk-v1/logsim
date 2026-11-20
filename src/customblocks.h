@@ -1631,8 +1631,8 @@ static LogicBlock& createInstrLoadImm(LogicSim& sim, LogicBlock& parent, int n)
 	LogicBlock& loadimm = parent.add(LogicBlock(
 		arrayToStr("num", n) + "|" + arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|wsigin|sigin",
 		arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|wsigout|sigout", "loadimm"));
-	LogicBlock& loadimmGateA = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x23);
-	LogicBlock& loadimmGateB = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x23);
+	LogicBlock& loadimmGateA = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x1D);
+	LogicBlock& loadimmGateB = createNBitIsEqualConstDataSigGate(sim, loadimm, n, 0x1D);
 	// only needs these 3 below bc data out could interfere if left on a few more cycles
 	// didn't cause a problem, just could
 	LogicBlock& loadimmOutGateA = createNBitGate(sim, loadimm, n);
@@ -1672,8 +1672,8 @@ static LogicBlock& createInstrMove(LogicSim& sim, LogicBlock& parent, int n)
 		arrayToStr("num", n) + "|" + arrayToStr("addrsrc", n) + "|" + arrayToStr("addrdst", n) + "|" + arrayToStr("memin", n) + "|wsigin|rsigin|sigin",
 		arrayToStr("addr", n) + "|" + arrayToStr("data", n) + "|wsigout|rsigout|sigout", "move"));
 
-	LogicBlock& moveGateA = createNBitIsEqualConstDataSigGate(sim, move, n, 0x1F);
-	LogicBlock& moveGateB = createNBitIsEqualConstDataSigGate(sim, move, n, 0x1F);
+	LogicBlock& moveGateA = createNBitIsEqualConstDataSigGate(sim, move, n, 0x1A);
+	LogicBlock& moveGateB = createNBitIsEqualConstDataSigGate(sim, move, n, 0x1A);
 
 	LogicBlock& gateSrc = createNBitGate(sim, move, n);
 	LogicBlock& gateDst = createNBitGate(sim, move, n);

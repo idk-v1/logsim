@@ -24,14 +24,14 @@ instructions:
 16 inv invert           [regA]                    [regB, flagzero]
 17 cmp compare          [regA, regB]              [flags less, greater, equal]
 18 cmu compare(uns)     [regA, regB]              [flags less, greater, equal]
-19 mmv memmove          [mem addr src]            [mem addr dest]
+19 ! mmv memmove        [mem addr src]            [mem addr dest]
 1A mov move             [regA]                    [regB]
-1B lod load             [mem addr src]            [regA]
-1C sto store            [regA]                    [mem addr dest]
-1D ldi loadimm          [imm*]                    [regA]    (* converted to rom addr)
+1B ! lod load           [mem addr src]            [regA]
+1C ! sto store          [regA]                    [mem addr dest]
+1D ldi loadimm          [imm*]                    [regA]
 1E cfl clearflags       []                        [flags]
 1F ghb gethighbit       [regA]                    [regB]
 20 glb getlowbit        [regA]                    [regB]
-21 isz iszero           [regA]                    [flagzero]
+21 ! isz iszero           [regA]                    [flagzero]
 
 flags: zero, equal, less, greater, overflow

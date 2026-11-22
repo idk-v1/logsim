@@ -35,6 +35,8 @@ struct LogicSim
 
 	LogicBlock* getHeld();
 
+	void reset();
+
 	size_t wireCount = 0;
 
 private:

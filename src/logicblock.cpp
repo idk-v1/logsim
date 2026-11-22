@@ -367,6 +367,19 @@ int LogicBlock::findTempl(const std::string& name)
 	return -1;
 }
 
+void LogicBlock::reset()
+{
+	if (label != 8) // on
+	{
+		for (size_t i = 0; i < input.size(); ++i)
+			input[i] = { 0 };
+		for (size_t i = 0; i < output.size(); ++i)
+			output[i] = { 0 };
+		for (auto& b : blocks)
+			b.reset();
+	}
+}
+
 LogicTemplate::LogicTemplate(const std::string& in, const std::string& out, const std::string& label)
 {
 	const char* start = in.data();

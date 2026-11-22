@@ -92,6 +92,8 @@ struct LogicBlock
 	XYCoord getRelPos() const;
 	XYCoord getSize() const;
 
+	void reset();
+
 	std::vector<WriteData> input;
 	std::vector<WriteData> output;
 	//WriteData* input = NULL;

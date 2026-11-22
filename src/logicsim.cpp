@@ -256,3 +256,8 @@ LogicBlock* LogicSim::getHeld()
 {
 	return held;
 }
+
+void LogicSim::reset()
+{
+	board.reset();
+}

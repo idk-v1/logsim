@@ -229,6 +229,7 @@
     <ClInclude Include="SDL3\include\SDL3\SDL_video.h" />
     <ClInclude Include="SDL3\include\SDL3\SDL_vulkan.h" />
     <ClInclude Include="graphics\stb_image.h" />
+    <ClInclude Include="src\program.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphics\graphics.c" />

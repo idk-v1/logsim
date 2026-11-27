@@ -36,10 +36,12 @@ struct LogicSim
 	LogicBlock* getHeld();
 
 	void reset();
+	void setWireVisability(bool state);
 
 	size_t wireCount = 0;
 
 private:
+	bool visibleWires = true;
 	bool needsRecalc = true;
 	int scale = 0;
 	int fontw = 0;

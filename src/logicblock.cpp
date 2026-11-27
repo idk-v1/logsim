@@ -12,34 +12,28 @@ size_t LogicBlock::blockCount = 0;
 
 std::vector<LogicTemplate> LogicBlock::templs;
 
-LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std::string& label)
+LogicBlock::LogicBlock(const std::string& in, const std::string& out, const std::string& label, bool exclReset)
 {
 	this->label = findTempl(label);
 	if (this->label == -1)
 	{
 		this->label = templs.size();
 		LogicTemplate temp(in, out, label);
-		input.resize(temp.input.size());
-		output.resize(temp.output.size());
-		//inputSize = temp.input.size();
-		//outputSize = temp.output.size();
-		//input = new WriteData[inputSize]();
-		//output = new WriteData[outputSize]();
+		input.resize(temp.input.size(), {0});
+		output.resize(temp.output.size(), {0});
 		templs.push_back(temp);
 	}
 	else
 	{
-		input.resize(templs[this->label].input.size());
-		output.resize(templs[this->label].output.size());
-		//inputSize = templs[this->label].input.size();
-		//outputSize = templs[this->label].output.size();
-		//input = new WriteData[inputSize]();
-		//output = new WriteData[outputSize]();
+		input.resize(templs[this->label].input.size(), {0});
+		output.resize(templs[this->label].output.size(), {0});
 		++templs[this->label].count;
 	}
 
 	if (label == "on")
 		output[0].data = 1;
+
+	excludeReset = exclReset;
 
 	++blockCount; 
 }
@@ -48,26 +42,28 @@ void LogicBlock::tick()
 {
 	switch (label)
 	{
-	case 0: // and
+	case BuiltInBlocks::And: // and
 		output[0].data = input[0].data && input[1].data; break;
-	case 1: // or
+	case BuiltInBlocks::Or: // or
 		output[0].data = input[0].data || input[1].data; break;
-	case 2: // nor
+	case BuiltInBlocks::Nor: // nor
 		output[0].data = !(input[0].data || input[1].data); break;
-	case 3: // nand
+	case BuiltInBlocks::Nand: // nand
 		output[0].data = !(input[0].data && input[1].data); break;
-	case 4: // xnor
+	case BuiltInBlocks::Xnor: // xnor
 		output[0].data = !(input[0].data != input[1].data); break;
-	case 5: // xor
+	case BuiltInBlocks::Xor: // xor
 		output[0].data = input[0].data != input[1].data; break;
-	case 6: // not
+	case BuiltInBlocks::Not: // not
 		output[0].data = !input[0].data; break;
-	case 7: // delay
+	case BuiltInBlocks::Delay: // delay
+	case BuiltInBlocks::LED: // led
 		output[0].data = input[0].data; break;
-	//case 8: // on
-	//case 9: // off
-	//case 10: // toggle
-	case 11: // button
+	case BuiltInBlocks::On: // on
+	case BuiltInBlocks::Off: // off
+	case BuiltInBlocks::Toggle: // toggle
+		break;
+	case BuiltInBlocks::Button: // button
 		output[0].data = 0; break;
 
 	default:
@@ -86,7 +82,8 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 	bool mouseOverBody = mouseOverWhole && (mousey >= by + fonth);
 	bool mouseOverTitle = mouseOverWhole && (mousey <= by + fonth);
 	bool mouseOverExpand = mouseOverTitle && (mousex >= bx + w - fontw);
-	bool mouseOverMove = mouseOverTitle && ((mousex <= bx + w - fontw) || !blocks.size());
+	bool mouseOverMove = (mouseOverTitle && ((mousex <= bx + w - fontw) || !blocks.size())) 
+		|| (mouseOverWhole && label == BuiltInBlocks::LED );
 
 	bool clickOnce = click && !oldclick;
 	bool clickHold = click;
@@ -95,10 +92,10 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 	{
 		if ((!*held && !found && mouseOverMove) || *held == this)
 		{
-			x += (mousex - oldmousex) / posMul;
-			y += (mousey - oldmousey) / posMul;
-			x = std::max(5, x);
-			y = std::max(5, y);
+			x += (float)(mousex - oldmousex) / (float)posMul;
+			y += (float)(mousey - oldmousey) / (float)posMul;
+			x = std::max(5.f, x);
+			y = std::max(5.f, y);
 			found = true;
 			*held = this;
 		}
@@ -109,12 +106,12 @@ void LogicBlock::interact(int mousex, int mousey, int oldmousex, int oldmousey, 
 		setExpand(!expand);
 	}
 
-	if (label == 10) // toggle
+	if (label == BuiltInBlocks::Toggle) // toggle
 	{
 		if (mouseOverBody && clickOnce)
 			output[0].data = !output[0].data;
 	}
-	else if (label == 11) // button
+	else if (label == BuiltInBlocks::Button) // button
 		output[0].data |= (mouseOverBody && clickOnce);
 }
 
@@ -124,10 +121,10 @@ LogicBlock& LogicBlock::add(const LogicBlock& block)
 	return blocks.back();
 }
 
-void LogicBlock::setPos(int x, int y)
+void LogicBlock::setPos(float x, float y)
 {
-	this->x = std::max(x, 5);
-	this->y = std::max(y, 5);
+	this->x = std::max(x, 5.f);
+	this->y = std::max(y, 5.f);
 }
 
 void LogicBlock::setExpand(bool expand)
@@ -157,18 +154,15 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 		b.recalc(bx, by, expand);
 
 	uint32_t maxLabel = 1;
-	//for (int i = 0; i < inputSize || i < outputSize; ++i)
 	for (int i = 0; i < input.size() || i < output.size(); ++i)
 	{
 		uint32_t inLen = 0;
 		uint32_t outLen = 0;
 
-		//if (i < inputSize)
 		if (i < input.size())
 		{
 			getTextSize(templs[label].input[i].data(), fontsize, &inLen, NULL);
 		}
-		//if (i < outputSize)
 		if (i < output.size())
 		{
 			getTextSize(templs[label].output[i].data(), fontsize, &outLen, NULL);
@@ -182,21 +176,25 @@ void LogicBlock::recalc(int px, int py, bool expanded)
 	if (expand)
 		for (auto& b : blocks)
 			if (b.w)
-				w = std::max(w, b.x * posMul + b.w);
+				w = std::max(w, (int)(b.x * posMul + b.w));
 
 	// 2*font_h for input/output on sides
 	w += 4 * fontw;
 
 	// fit max of input or output length or at least 1
-	//h = (fonth - fontw) + fonth * std::max(1, std::max(inputSize, outputSize));
 	h = (fonth - fontw) + fonth * std::max(1ull, std::max(input.size(), output.size()));
 	if (expand)
 		for (auto& b : blocks)
 			if (b.h)
-				h = std::max(h, b.y * posMul + b.h);
+				h = std::max(h, (int)(b.y * posMul + b.h));
 
 	// hfont_h for title
 	h += fonth;
+
+	if (label == BuiltInBlocks::LED)
+	{
+		w = h = posMul * 16;
+	}
 }
 
 void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
@@ -207,6 +205,7 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	Uint32 on = rgb(255, 255, 0);
 	Uint32 off = rgb(63, 63, 0);
 	Uint32 bgColorOn = rgb(63, 63, 63);
+	Uint32 bgColorBright = rgb(127, 127, 127);
 	Uint32 bgColorOff = rgb(31, 31, 31);
 	Uint32 titlebarColor = rgb(15, 15, 15);
 	Uint32 inputsColor = rgb(63, 15, 15);
@@ -216,48 +215,55 @@ void LogicBlock::draw(SDL_Surface* surface, LogicBlock* held)
 	Uint32 outlineColor = rgb(127, 127, 127);
 	Uint32 outlineHeldColor = rgb(127, 255, 31);
 
-	// label == on, label == toggle
-	if (label == 8 || (label == 10 && output[0].data))
-		drawRect(surface, bx, by, w, h, bgColorOn); // bg
+	if (label != BuiltInBlocks::LED)
+	{
+		if (label == BuiltInBlocks::On || (label == BuiltInBlocks::Toggle && output[0].data))
+			drawRect(surface, bx, by, w, h, bgColorOn); // bg
+		else
+			drawRect(surface, bx, by, w, h, bgColorOff); // bg
+		drawRect(surface, bx, by, w, fonth, titlebarColor); // titlebar
+		drawRect(surface, bx, by + fonth, fontw, h - fonth, inputsColor); // inputs
+		drawRect(surface, bx + w - fontw, by + fonth, fontw, h - fonth, outputsColor); // outputs
+		if (blocks.size())
+		{
+			// expand button
+			drawRect(surface, bx + w - fontw, by, fontw, fonth, expandButtonColor);
+			drawRect(surface, bx + w - fontw,
+				by + fonth / 2 - ceilf(fontw / 6.f), fontw, fontw / 3, textColor);
+			if (!expand)
+				drawRect(surface, bx + w - fontw + fontw / 2 - floor(fontw / 6.f),
+					by + fonth / 2 - ceil(fontw / 2.f), fontw / 3, fontw, textColor);
+		}
+		drawText(surface, bx + fontw, by, fontsize, textColor, templs[label].name.data()); // title
+
+		int index = 0;
+		for (int i = 0; i < input.size(); ++i)
+		{
+			XYCoord xy = getConnectionPos(index, true);
+			drawCircle(surface, xy.x, xy.y, fontw / 2,
+				input[i].data ? on : off);
+			drawTextA(surface, xy.x + fontw, xy.y, -1, 0, fontsize,
+				textColor, templs[label].input[i].data());
+			++index;
+		}
+		index = 0;
+		for (int i = 0; i < output.size(); ++i)
+		{
+			XYCoord xy = getConnectionPos(index, false);
+			drawCircle(surface, xy.x, xy.y, fontw / 2,
+				output[i].data ? on : off);
+			drawTextA(surface, xy.x - fontw, xy.y, 1, 0, fontsize,
+				textColor, templs[label].output[i].data());
+
+			++index;
+		}
+	}
 	else
-		drawRect(surface, bx, by, w, h, bgColorOff); // bg
-	drawRect(surface, bx, by, w - fontw, fonth, titlebarColor); // titlebar
-	drawRect(surface, bx, by + fonth, fontw, h - fonth, inputsColor); // inputs
-	drawRect(surface, bx + w - fontw, by + fonth, fontw, h - fonth, outputsColor); // outputs
-	if (blocks.size())
 	{
-		// expand button
-		drawRect(surface, bx + w - fontw, by, fontw, fonth, expandButtonColor);
-		drawRect(surface, bx + w - fontw, 
-			by + fonth / 2 - ceilf(fontw / 6.f), fontw, fontw / 3, textColor);
-		if (!expand)
-			drawRect(surface, bx + w - fontw + fontw / 2 - floor(fontw / 6.f), 
-				by + fonth / 2 - ceil(fontw / 2.f), fontw / 3, fontw, textColor);
-	}
-	drawText(surface, bx + fontw, by, fontsize, textColor, templs[label].name.data()); // title
-
-	int index = 0;
-	//for (int i = 0; i < inputSize; ++i)
-	for (int i = 0; i < input.size(); ++i)
-	{
-		XYCoord xy = getConnectionPos(index, true);
-		drawCircle(surface, xy.x, xy.y, fontw / 2,
-			input[i].data ? on : off);
-		drawTextA(surface, xy.x + fontw, xy.y, -1, 0, fontsize,
-			textColor, templs[label].input[i].data());
-		++index;
-	}
-	index = 0;
-	//for (int i = 0; i < outputSize; ++i)
-	for (int i = 0; i < output.size(); ++i)
-	{
-		XYCoord xy = getConnectionPos(index, false);
-		drawCircle(surface, xy.x, xy.y, fontw / 2,
-			output[i].data ? on : off);
-		drawTextA(surface, xy.x - fontw, xy.y, 1, 0, fontsize,
-			textColor, templs[label].output[i].data());
-
-		++index;
+		if (input[0].data)
+			drawRect(surface, bx, by, w, h, bgColorBright); // bg
+		else
+			drawRect(surface, bx, by, w, h, bgColorOff); // bg
 	}
 
 	if (expand)
@@ -286,7 +292,6 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	int index = 0;
 	if (isInput)
 	{
-		//for (int i = 0; i < inputSize; ++i)
 		for (int i = 0; i < input.size(); ++i)
 		{
 			if (templs[label].input[i] == name)
@@ -296,7 +301,6 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 	}
 	else
 	{
-		//for (int i = 0; i < outputSize; ++i)
 		for (int i = 0; i < output.size(); ++i)
 		{
 			if (templs[label].output[i] == name)
@@ -309,12 +313,17 @@ int LogicBlock::getConnectionIndex(const std::string& name, bool isInput)
 
 void LogicBlock::resetWrittenTo()
 {
-	//for (int i = 0; i < inputSize; ++i)
-	for (int i = 0; i < input.size(); ++i)
+	uint64_t mask = 0x00FF00FF00FF00FF;
+	int i = 0;
+	for (; i + 3 < input.size(); i += 4)
+		*((uint64_t*)&input[i]) &= mask;
+	for (; i < input.size(); ++i)
 		input[i].written = false;
 
-	//for (int i = 0; i < outputSize; ++i)
-	for (int i = 0; i < output.size(); ++i)
+	i = 0;
+	for (; i + 3 < output.size(); i += 4)
+		*((uint64_t*)&output[i]) &= mask;
+	for (; i < output.size(); ++i)
 		output[i].written = false;
 
 	for (auto& b : blocks)
@@ -369,15 +378,14 @@ int LogicBlock::findTempl(const std::string& name)
 
 void LogicBlock::reset()
 {
-	if (label != 8) // on
-	{
-		for (size_t i = 0; i < input.size(); ++i)
-			input[i] = { 0 };
-		for (size_t i = 0; i < output.size(); ++i)
-			output[i] = { 0 };
-		for (auto& b : blocks)
-			b.reset();
-	}
+	if (excludeReset)
+		return;
+	for (size_t i = 0; i < input.size(); ++i)
+		input[i] = { 0 };
+	for (size_t i = 0; i < output.size(); ++i)
+		output[i] = { 0 };
+	for (auto& b : blocks)
+		b.reset();
 }
 
 LogicTemplate::LogicTemplate(const std::string& in, const std::string& out, const std::string& label)

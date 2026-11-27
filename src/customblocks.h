@@ -7,7 +7,7 @@
 // out: out[]
 static LogicBlock& createNBitNumber(LogicSim& sim, LogicBlock& parent, int n, int64_t input)
 {
-	LogicBlock& num = parent.add(LogicBlock("", arrayToStr("out", n), std::to_string(n) + "bitNumber"));
+	LogicBlock& num = parent.add(LogicBlock("", arrayToStr("out", n), std::to_string(n) + "bitNumber", true));
 
 	bool neg = n < 0;
 	for (int i = 0; i < n; ++i)
@@ -1593,19 +1593,25 @@ static LogicBlock& createProgramCounter(LogicSim& sim, LogicBlock& parent, int n
 }
 
 // 4 cycles write
-// in: zwrite, zdata, ewrite, edata, lwrite, ldata, gwrite, gdata, owrite, odata
-// out: zero, equal, less, greater, overflow
+// in: zwrite, zdata, ewrite, edata, lwrite, ldata, gwrite, gdata, owrite, odata, 
+// amwrite[3], amdata[3]
+// out: zero, equal, less, greater, overflow, am[3]
 static LogicBlock& createFlagRegister(LogicSim& sim, LogicBlock& parent)
 {
 	LogicBlock& flags = parent.add(LogicBlock(
-		"zwrite|zdata|ewrite|edata|lwrite|ldata|gwrite|gdata|owrite|odata", 
-		"zero|equal|less|greater|overflow", "flagRegister"));
+		"zwrite|zdata|ewrite|edata|lwrite|ldata|gwrite|gdata|owrite|odata"
+		"|amwrite[3]|amdata[3]", 
+		"zero|equal|less|greater|overflow|am[3]", "flagRegister"));
 
 	LogicBlock& zero = createMemoryCell(sim, flags);
 	LogicBlock& equal = createMemoryCell(sim, flags);
 	LogicBlock& less = createMemoryCell(sim, flags);
 	LogicBlock& greater = createMemoryCell(sim, flags);
 	LogicBlock& overflow = createMemoryCell(sim, flags);
+
+	LogicBlock& am0 = createMemoryCell(sim, flags);
+	LogicBlock& am1 = createMemoryCell(sim, flags);
+	LogicBlock& am2 = createMemoryCell(sim, flags);
 
 	sim.connect(flags, "zwrite", zero, "write", inin);
 	sim.connect(flags, "zdata", zero, "data", inin);
@@ -1626,6 +1632,18 @@ static LogicBlock& createFlagRegister(LogicSim& sim, LogicBlock& parent)
 	sim.connect(flags, "owrite", overflow, "write", inin);
 	sim.connect(flags, "odata", overflow, "data", inin);
 	sim.connect(overflow, "out", flags, "overflow", outout);
+
+	sim.connect(flags, "amwrite[0]", am0, "write", inin);
+	sim.connect(flags, "amdata[0]", am0, "data", inin);
+	sim.connect(am0, "out", flags, "am[0]", outout);
+
+	sim.connect(flags, "amwrite[1]", am0, "write", inin);
+	sim.connect(flags, "amdata[1]", am0, "data", inin);
+	sim.connect(am1, "out", flags, "am[1]", outout);
+
+	sim.connect(flags, "amwrite[2]", am2, "write", inin);
+	sim.connect(flags, "amdata[2]", am2, "data", inin);
+	sim.connect(am2, "out", flags, "am[2]", outout);
 
 	return flags;
 }
@@ -1658,6 +1676,82 @@ static LogicBlock& createFlipFlop(LogicSim& sim, LogicBlock& parent)
 
 	return flipflop;
 }
+
+// in: p0[], p1[], p2[], memin[], am[3], rsigin, sigin
+// out: p0[], p1[], p2[], addr[], rsigout, sigout
+static LogicBlock& createAddressMode(LogicSim& sim, LogicBlock& parent, int n)
+{
+	printf("createAddressMode still needs to be completed\n");
+
+	LogicBlock& addr = parent.add(LogicBlock(
+		arrayToStr("p0", n) + "|" + arrayToStr("p1", n) + "|" + arrayToStr("p2", n) + "|" +
+		arrayToStr("memin", n) + "|am[3]|rsigin|sigin",
+		arrayToStr("p0", n) + "|" + arrayToStr("p1", n) + "|" + arrayToStr("p2", n) + 
+		"|" + arrayToStr("addr", n) + "|rsigout|sigout", "AddressMode"));
+
+	// passthru add mode
+	LogicBlock& iszero = createNBitIsZero(sim, addr, 3);
+	sim.connect(addr, "am[]", iszero, "in[]", inin);
+	LogicBlock& p0Gate = createNBitGate(sim, addr, n);
+	LogicBlock& p1Gate = createNBitGate(sim, addr, n);
+	LogicBlock& p2Gate = createNBitGate(sim, addr, n);
+	LogicBlock& siggate = addr.add(LogicBlockAnd);
+
+	LogicBlock& am0not = addr.add(LogicBlockNot);
+	LogicBlock& am1not = addr.add(LogicBlockNot);
+	LogicBlock& am2not = addr.add(LogicBlockNot);
+	sim.connect(addr, "am[0]", am0not, "in", inin);
+	sim.connect(addr, "am[1]", am1not, "in", inin);
+	sim.connect(addr, "am[2]", am2not, "in", inin);
+
+	sim.connect(am0not, "out", p0Gate, "write");
+	sim.connect(addr, "p0[]", p0Gate, "in[]", inin);
+	sim.connect(p0Gate, "out[]", addr, "p0[]", outout);
+
+	sim.connect(am1not, "out", p1Gate, "write");
+	sim.connect(addr, "p1[]", p1Gate, "in[]", inin);
+	sim.connect(p1Gate, "out[]", addr, "p1[]", outout);
+	
+	sim.connect(am2not, "out", p2Gate, "write");
+	sim.connect(addr, "p2[]", p2Gate, "in[]", inin);
+	sim.connect(p2Gate, "out[]", addr, "p2[]", outout);
+	
+	sim.connect(addr, "sigin", siggate, "a", inin);
+	sim.connect(iszero, "out", siggate, "b");
+	sim.connect(siggate, "out", addr, "sigout", outout);
+
+	LogicBlock& notzero = addr.add(LogicBlockNot);
+	sim.connect(iszero, "out", notzero, "in");
+	LogicBlock& notsiggate = addr.add(LogicBlockAnd);
+	sim.connect(addr, "sigin", notsiggate, "a", inin);
+	sim.connect(notzero, "out", notsiggate, "b");
+
+	LogicBlock& flip0 = createFlipFlop(sim, addr);
+	LogicBlock& flipand0 = addr.add(LogicBlockAnd);
+	LogicBlock& mem0 = createNBitMemory(sim, addr, n);
+	LogicBlock& addr0 = createNBitGate(sim, addr, n);
+	sim.connect(addr, "p0[]", addr0, "in[]", inin);
+	sim.connect(addr, "am[0]", addr0, "write", inin);
+	sim.connect(addr0, "out[]", addr, "addr[]", outout);
+	sim.connect(addr0, "sigout", addr, "rsigout", outout);
+
+	sim.connect(notsiggate, "out", flip0, "set");
+	sim.connect(flip0, "out", flipand0, "a");
+	sim.connect(flipand0, "out", flip0, "reset");
+	sim.connect(addr, "rsigin", flipand0, "b", inin);
+
+
+	LogicBlock& flip1 = createFlipFlop(sim, addr);
+	LogicBlock& flipand1 = addr.add(LogicBlockAnd);
+	LogicBlock& mem1 = createNBitMemory(sim, addr, n);
+	
+	LogicBlock& flip2 = createFlipFlop(sim, addr);
+	LogicBlock& flipand2 = addr.add(LogicBlockAnd);
+	LogicBlock& mem2 = createNBitMemory(sim, addr, n);
+
+	return addr;
+}
+
 
 // in: instr->num[], sigin
 // out: sigout
@@ -3875,22 +3969,17 @@ static LogicBlock& createInstrLoadImm(LogicSim& sim, LogicBlock& parent, int n)
 }
 
 // in: instr->num[], sigin
-// out: zero, less, greater, equal, overflow, sigout
+// out: sigout
 static LogicBlock& createInstrClearFlags(LogicSim& sim, LogicBlock& parent, int n)
 {
 	LogicBlock& clear = parent.add(LogicBlock(
 		arrayToStr("num", n) + "|sigin",
-		"zero|less|greater|equal|overflow|sigout", "clearFlags"));
+		"sigout", "clearFlags"));
 	LogicBlock& clearGateA = createNBitIsEqualConstDataSigGate(sim, clear, n, 0x1E);
 
 	sim.connect(clear, "num[]", clearGateA, "num[]", inin);
 	sim.connect(clear, "sigin", clearGateA, "sigin", inin);
 
-	sim.connect(clearGateA, "sigout", clear, "zero", outout);
-	sim.connect(clearGateA, "sigout", clear, "less", outout);
-	sim.connect(clearGateA, "sigout", clear, "greater", outout);
-	sim.connect(clearGateA, "sigout", clear, "equal", outout);
-	sim.connect(clearGateA, "sigout", clear, "overflow", outout);
 	sim.connect(clearGateA, "sigout", clear, "sigout", outout);
 
 	return clear;
@@ -4123,6 +4212,28 @@ static LogicBlock& createInstrIsZero(LogicSim& sim, LogicBlock& parent, int n)
 
 	return zero;
 }
+
+// in: instr->num[], param1->flags[], sigin
+// out: amdata[3], sigout
+static LogicBlock& createInstrSetAddrMode(LogicSim& sim, LogicBlock& parent, int n)
+{
+	LogicBlock& flags = parent.add(LogicBlock(
+		arrayToStr("num", n) + "|" + arrayToStr("flags", n) + "|sigin",
+		"amdata[3]|sigout", "setAddrMode"));
+	LogicBlock& flagsGateA = createNBitIsEqualConstDataSigGate(sim, flags, n, 0x22);
+
+	sim.connect(flags, "num[]", flagsGateA, "num[]", inin);
+	sim.connect(flags, "flags[]", flagsGateA, "data[]", inin);
+	sim.connect(flags, "sigin", flagsGateA, "sigin", inin);
+
+	sim.connect(flagsGateA, "data[0]", flags, "amdata[0]", outout);
+	sim.connect(flagsGateA, "data[1]", flags, "amdata[1]", outout);
+	sim.connect(flagsGateA, "data[2]", flags, "amdata[2]", outout);
+	sim.connect(flagsGateA, "sigout", flags, "sigout", outout);
+
+	return flags;
+}
+
 
 
 // in: one, five, ten, addsub, action

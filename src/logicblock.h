@@ -51,8 +51,8 @@ static bool isArray(const std::string& str)
 
 struct XYCoord
 {
-	XYCoord(int x = 0, int y = 0) : x(x), y(y) {}
-	int x, y;
+	XYCoord(float x = 0, float y = 0) : x(x), y(y) {}
+	float x, y;
 };
 
 struct WriteData
@@ -63,7 +63,7 @@ struct WriteData
 struct LogicBlock
 {
 	LogicBlock() = default;
-	LogicBlock(const std::string& in, const std::string& out, const std::string& label);
+	LogicBlock(const std::string& in, const std::string& out, const std::string& label, bool exclReset = false);
 
 	void tick();
 	void interact(int mousex, int mousey, int oldmousex, int oldmousey,
@@ -71,7 +71,7 @@ struct LogicBlock
 
 	LogicBlock& add(const LogicBlock& block);
 
-	void setPos(int x, int y);
+	void setPos(float x, float y);
 
 	void setExpand(bool expand);
 
@@ -117,8 +117,10 @@ private:
 
 	int label = -1;
 
-	int x = 5, y = 5, w = 0, h = 0, bx = 0, by = 0;
+	float x = 5, y = 5;
+	int w = 0, h = 0, bx = 0, by = 0;
 	bool expand = false, hidden = false;
+	bool excludeReset = false;
 };
 
 // in: a, b
@@ -155,13 +157,34 @@ private:
 #define LogicBlockDelay  LogicBlock("in", "out", "delay")
 // out: out
 // index 8
-#define LogicBlockOn     LogicBlock("", "out", "on")
+#define LogicBlockOn     LogicBlock("", "out", "on", true)
 // out: out
 // index 9
-#define LogicBlockOff    LogicBlock("", "out", "off")
+#define LogicBlockOff    LogicBlock("", "out", "off", true)
 // out: out
 // index 10
 #define LogicBlockToggle LogicBlock("", "out", "toggle")
 // out: out
 // index 11
 #define LogicBlockButton LogicBlock("", "out", "button")
+// in: in
+// index 12
+#define LogicBlockLED    LogicBlock("in", "out", "led")
+
+enum BuiltInBlocks
+{
+	And,
+	Or,
+	Nor,
+	Nand,
+	Xnor,
+	Xor,
+	Not,
+	Delay,
+	On,
+	Off,
+	Toggle,
+	Button,
+	LED,
+	Max
+};

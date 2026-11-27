@@ -28,10 +28,11 @@ instructions:
 1A mov move             [regA]                    [regB]
 1B ! lod load           [mem addr src]            [regA]
 1C ! sto store          [regA]                    [mem addr dest]
-1D ldi loadimm          [imm*]                    [regA]
+1D ldi loadimm          [imm or var]              [regA] // if using var, this loads the address of var into regA
 1E cfl clearflags       []                        [flags]
 1F ghb gethighbit       [regA]                    [regB]
 20 glb getlowbit        [regA]                    [regB]
-21 ! isz iszero           [regA]                    [flagzero]
+21 isz iszero           [regA]                    [flagzero]
+22 sam setaddrmode      [mode]                    [flagam0, flagam1, flagam2] // sets addressing mode (lower 3 bits used) (0 - default - uses address as address, 1 - reads value, uses it as address)
 
-flags: zero, equal, less, greater, overflow
+flags: zero, equal, less, greater, overflow, am0, am1, am2

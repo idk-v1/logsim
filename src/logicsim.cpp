@@ -4,7 +4,7 @@
 LogicSim::LogicSim()
 { 
 	std::vector<LogicBlock> temp;
-	temp.reserve(12);
+	temp.reserve(BuiltInBlocks::Max);
 	temp.push_back(LogicBlockAnd);
 	temp.push_back(LogicBlockOr);
 	temp.push_back(LogicBlockNor);
@@ -17,6 +17,7 @@ LogicSim::LogicSim()
 	temp.push_back(LogicBlockOff);
 	temp.push_back(LogicBlockToggle);
 	temp.push_back(LogicBlockButton);
+	temp.push_back(LogicBlockLED);
 
 	LogicBlock::blockCount = 0;
 	board = LogicBlock("", "", "Board");
@@ -88,51 +89,57 @@ void LogicSim::connect(LogicBlock& a, const std::string& aIndex, LogicBlock& b,
 
 void LogicSim::sortConnections()
 {
-	std::vector<Connector> tempIn;
-	tempIn.reserve(connectionsIn.size());
-	do
+	if (connectionsIn.size())
 	{
-		bool found = false;
-		for (size_t i = 0; i < connectionsIn.size() - 1; ++i)
+		std::vector<Connector> tempIn;
+		tempIn.reserve(connectionsIn.size());
+		do
 		{
-			if (connectionsIn.back().a == connectionsIn[i].b && 
-				connectionsIn.back().aIndex == connectionsIn[i].bIndex)
+			bool found = false;
+			for (size_t i = 0; i < connectionsIn.size() - 1; ++i)
 			{
-				std::swap(connectionsIn.back(), connectionsIn[i]);
-				found = true;
-				break;
+				if (connectionsIn.back().a == connectionsIn[i].b &&
+					connectionsIn.back().aIndex == connectionsIn[i].bIndex)
+				{
+					std::swap(connectionsIn.back(), connectionsIn[i]);
+					found = true;
+					break;
+				}
 			}
-		}
-		if (!found)
-		{
-			tempIn.push_back(connectionsIn.back());
-			connectionsIn.pop_back();
-		}
-	} while (connectionsIn.size());
-	connectionsIn = tempIn;
+			if (!found)
+			{
+				tempIn.push_back(connectionsIn.back());
+				connectionsIn.pop_back();
+			}
+		} while (connectionsIn.size());
+		connectionsIn = tempIn;
+	}
 
-	std::vector<Connector> tempOut;
-	tempOut.reserve(connectionsOut.size());
-	do
+	if (connectionsOut.size())
 	{
-		bool found = false;
-		for (size_t i = 0; i < connectionsOut.size() - 1; ++i)
+		std::vector<Connector> tempOut;
+		tempOut.reserve(connectionsOut.size());
+		do
 		{
-			if (connectionsOut.back().a == connectionsOut[i].b && 
-				connectionsOut.back().aIndex == connectionsOut[i].bIndex)
+			bool found = false;
+			for (size_t i = 0; i < connectionsOut.size() - 1; ++i)
 			{
-				std::swap(connectionsOut.back(), connectionsOut[i]);
-				found = true;
-				break;
+				if (connectionsOut.back().a == connectionsOut[i].b &&
+					connectionsOut.back().aIndex == connectionsOut[i].bIndex)
+				{
+					std::swap(connectionsOut.back(), connectionsOut[i]);
+					found = true;
+					break;
+				}
 			}
-		}
-		if (!found)
-		{
-			tempOut.push_back(connectionsOut.back());
-			connectionsOut.pop_back();
-		}
-	} while (connectionsOut.size());
-	connectionsOut = tempOut;
+			if (!found)
+			{
+				tempOut.push_back(connectionsOut.back());
+				connectionsOut.pop_back();
+			}
+		} while (connectionsOut.size());
+		connectionsOut = tempOut;
+	}
 }
 
 LogicBlock& LogicSim::add(const LogicBlock& block)
@@ -173,6 +180,8 @@ void LogicSim::interact(int mousex, int mousey, int oldmousex, int oldmousey, bo
 void LogicSim::draw(SDL_Surface* surface)
 {
 	board.draw(surface, held);
+	if (!visibleWires)
+		return;
 
 	for (auto& c : connections)
 		c.draw(surface);
@@ -238,6 +247,9 @@ void LogicSim::setScroll(int x, int y)
 
 void LogicSim::scroll(int x, int y)
 {
+	if (!x && !y)
+		return;
+
 	if (scale > 0)
 	{
 		x = x / (scale + 1.f) * 3 / 2.f;
@@ -260,4 +272,10 @@ LogicBlock* LogicSim::getHeld()
 void LogicSim::reset()
 {
 	board.reset();
+	board.tick();
+}
+
+void LogicSim::setWireVisability(bool state)
+{
+	visibleWires = state;
 }
